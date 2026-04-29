@@ -17,44 +17,53 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ========== CSS PERSONALIZADO ==========
+# ========== CSS PERSONALIZADO (MODO OSCURO) ==========
 st.markdown("""
 <style>
+    /* Fondo oscuro global */
     .stApp {
-        background-color: #f5f7fa;
+        background-color: #0e1117;
     }
     
+    /* Fondo del contenido principal */
+    .main > div {
+        background-color: #0e1117;
+    }
+    
+    /* Títulos principales modo oscuro */
     .main-header {
         font-size: 24px;
         font-weight: 600;
-        color: #1e3a5f;
-        border-bottom: 2px solid #cbd5e1;
+        color: #ffffff;
+        border-bottom: 2px solid #2d3748;
         padding-bottom: 10px;
         margin-bottom: 20px;
         font-family: 'Segoe UI', 'Roboto', sans-serif;
     }
     
+    /* Títulos de sección modo oscuro */
     .section-header {
         font-size: 18px;
         font-weight: 500;
-        color: #2c3e50;
+        color: #e2e8f0;
         margin-top: 15px;
         margin-bottom: 10px;
         padding-left: 5px;
-        border-left: 3px solid #1e3a5f;
+        border-left: 3px solid #4299e1;
     }
     
+    /* Tarjetas de métricas modo oscuro */
     .metric-card {
-        background-color: white;
+        background-color: #1a1e2e;
         border-radius: 8px;
         padding: 15px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        border: 1px solid #2d3748;
     }
     
     .metric-label {
         font-size: 13px;
-        color: #64748b;
+        color: #a0aec0;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -62,41 +71,113 @@ st.markdown("""
     .metric-value {
         font-size: 28px;
         font-weight: 600;
-        color: #1e3a5f;
+        color: #ffffff;
         margin-top: 5px;
     }
     
+    /* Botones modo oscuro */
     .stButton button {
-        background-color: #1e3a5f;
-        color: white;
-        border: none;
+        background-color: #2d3748;
+        color: #ffffff;
+        border: 1px solid #4a5568;
         border-radius: 4px;
         font-weight: 500;
         transition: all 0.2s;
     }
     
     .stButton button:hover {
-        background-color: #2c5282;
-        border: none;
+        background-color: #4a5568;
+        border-color: #718096;
     }
     
+    /* Sidebar modo oscuro */
     [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #e2e8f0;
+        background-color: #0d1117;
+        border-right: 1px solid #2d3748;
     }
     
+    /* Texto del sidebar */
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #e2e8f0;
+    }
+    
+    /* Data editor estilo tabla contable modo oscuro */
     [data-testid="stDataFrame"] {
-        border: 1px solid #e2e8f0;
+        border: 1px solid #2d3748;
         border-radius: 6px;
+        background-color: #1a1e2e;
     }
     
+    /* Inputs modo oscuro */
+    .stTextInput input, .stSelectbox select, .stTextArea textarea {
+        background-color: #1a1e2e;
+        border-color: #2d3748;
+        color: #f7fafc;
+    }
+    
+    .stTextInput input:focus, .stSelectbox select:focus {
+        border-color: #4299e1;
+    }
+    
+    /* Expandadores modo oscuro */
+    .streamlit-expanderHeader {
+        background-color: #1a1e2e;
+        color: #e2e8f0;
+    }
+    
+    /* Métricas modo oscuro */
+    [data-testid="stMetricValue"] {
+        color: #ffffff;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: #a0aec0;
+    }
+    
+    /* Dataframes y tablas */
+    .stDataFrame {
+        background-color: #1a1e2e;
+    }
+    
+    /* Mensajes de info/warning/error */
+    .stAlert {
+        background-color: #2d3748;
+    }
+    
+    /* Selectbox */
+    .stSelectbox div[data-baseweb="select"] {
+        background-color: #1a1e2e;
+    }
+    
+    /* Ocultar elementos innecesarios */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    .stTextInput input, .stSelectbox select {
-        border-radius: 4px;
-        border: 1px solid #cbd5e1;
+    /* Divider modo oscuro */
+    hr {
+        border-color: #2d3748;
+    }
+    
+    /* Caption y textos pequeños */
+    .stCaption, caption {
+        color: #a0aec0;
+    }
+    
+    /* Checkbox modo oscuro */
+    .stCheckbox label span {
+        color: #e2e8f0;
+    }
+    
+    /* Tabs modo oscuro */
+    .stTabs [data-baseweb="tab-list"] button {
+        background-color: #0d1117;
+        color: #a0aec0;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        background-color: #1a1e2e;
+        color: #ffffff;
     }
 </style>
 """, unsafe_allow_html=True)
