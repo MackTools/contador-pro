@@ -11,7 +11,7 @@ from io import BytesIO
 # ========== CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
     page_title="Contaduría | Sistema Contable",
-    page_icon="📊",
+    page_icon="😎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -147,7 +147,7 @@ with st.sidebar:
     # Logo / Título
     st.markdown("""
     <div style="text-align: center; padding: 20px 0 10px 0;">
-        <span style="font-size: 28px;">📊</span>
+        <span style="font-size: 28px;">😎</span>
         <h2 style="color: #1e3a5f; margin: 0;">Contaduría</h2>
         <p style="color: #64748b; font-size: 12px;">Sistema Contable</p>
     </div>
@@ -209,7 +209,7 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
         
-        if st.button("🚪 Cerrar sesión", use_container_width=True):
+        if st.button(" Cerrar sesión", use_container_width=True):
             st.session_state.usuario = None
             st.session_state.proyecto_actual = None
             st.rerun()
@@ -476,7 +476,7 @@ if len(edited_df) > 0:
                     )
             
             # Resumen estadístico
-            st.markdown("##### 📊 Resumen")
+            st.markdown("##### 😎 Resumen")
             stats_df = pd.DataFrame({
                 "Métrica": ["Mínimo", "Máximo", "Promedio", "Suma"],
                 "Debe": [
