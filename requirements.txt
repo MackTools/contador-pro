@@ -1,4 +1,7 @@
-# requirements_web.txt - Sin pandas (usa solo lo necesario)
-streamlit==1.35.0
-pymongo==4.7.0
-openpyxl==3.1.2
+# requirements.txt - Versión que NO compila Pillow
+streamlit>=1.35.0
+pymongo>=4.7.0
+openpyxl>=3.1.2
+pandas>=2.2.0
+numpy>=1.26.0
+pillow>=10.0.0 --only-binary=pillow
