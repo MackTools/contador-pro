@@ -1,138 +1,144 @@
-# cloud_manager.py - COMPLETO con AUTH y DATA API
+# cloud_manager.py - Versión con PyMongo (RECOMENDADA)
 
-import requests
-import json
-from tkinter import messagebox
+import pymongo
 import hashlib
+from datetime import datetime
+import threading
 
 class CloudManager:
     def __init__(self):
-        # ⚠️ REEMPLAZA ESTOS VALORES con los tuyos de MongoDB Atlas
-        self.APP_ID = "data-xxxxx"  # Tu App ID de MongoDB Atlas
-        self.API_KEY = "tu-api-key-aqui"  # Tu API Key
-        self.CLUSTER = "Cluster0"
-        self.DATABASE = "contador_pro"
+        # ⚠️ REEMPLAZA ESTA CADENA con la que copiaste de MongoDB Atlas
+        # Formato: mongodb+srv://USUARIO:CONTRASEÑA@cluster0.xxxxx.mongodb.net/
+        self.MONGO_URI = "mongodb+srv://contador_user:TU_CONTRASEÑA@cluster0.xxxxx.mongodb.net/"
         
-        self.url = f"https://data.mongodb-api.com/app/{self.APP_ID}/endpoint/data/v1"
-        self.headers = {
-            "api-key": self.API_KEY,
-            "Content-Type": "application/json"
-        }
-        
+        self.DB_NAME = "contador_pro"
         self.usuario_actual = None
+        self.client = None
         
-    def _request(self, action, collection, **kwargs):
-        """Método base para todas las peticiones a MongoDB Data API"""
-        payload = {
-            "dataSource": self.CLUSTER,
-            "database": self.DATABASE,
-            "collection": collection
-        }
-        payload.update(kwargs)
-        
-        try:
-            response = requests.post(
-                f"{self.url}/action/{action}",
-                json=payload,
-                headers=self.headers,
-                timeout=15
-            )
-            return response.json()
-        except Exception as e:
-            return {"error": str(e)}
+        self._conectar()
     
-    # ========== AUTENTICACIÓN DE USUARIOS ==========
+    def _conectar(self):
+        """Conecta a MongoDB Atlas"""
+        try:
+            self.client = pymongo.MongoClient(self.MONGO_URI)
+            # Probar conexión
+            self.client.admin.command('ping')
+            print("✓ Conectado a MongoDB Atlas")
+            return True
+        except Exception as e:
+            print(f"✗ Error de conexión: {e}")
+            return False
+    
+    def _get_db(self):
+        """Obtiene la base de datos"""
+        if self.client is None:
+            self._conectar()
+        return self.client[self.DB_NAME]
+    
+    # ========== AUTENTICACIÓN ==========
     
     def registrar_usuario(self, email, password, nombre):
-        """Registra un nuevo usuario en la nube"""
-        # Hash de contraseña (nunca guardes texto plano)
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        """Registra un nuevo usuario"""
+        db = self._get_db()
+        usuarios = db.usuarios
         
-        # Verificar si el usuario ya existe
-        existe = self._request("findOne", "usuarios", filter={"email": email})
-        
-        if existe.get("document"):
+        # Verificar si ya existe
+        if usuarios.find_one({"email": email}):
             return False, "El usuario ya existe"
         
-        # Crear nuevo usuario
+        # Hash de contraseña
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        # Crear usuario
         nuevo_usuario = {
             "email": email,
             "password": password_hash,
             "nombre": nombre,
-            "proyectos": [],  # Lista de IDs de proyectos
-            "creado_en": self._fecha_actual()
+            "proyectos": [],
+            "creado_en": datetime.now()
         }
         
-        resultado = self._request("insertOne", "usuarios", document=nuevo_usuario)
-        
-        if resultado.get("insertedId"):
+        try:
+            usuarios.insert_one(nuevo_usuario)
             return True, "Usuario creado exitosamente"
-        return False, "Error al crear usuario"
+        except Exception as e:
+            return False, f"Error: {str(e)}"
     
     def login(self, email, password):
-        """Autentica un usuario existente"""
+        """Inicia sesión"""
+        db = self._get_db()
+        usuarios = db.usuarios
+        
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         
-        resultado = self._request("findOne", "usuarios", filter={
+        usuario = usuarios.find_one({
             "email": email,
             "password": password_hash
         })
         
-        if resultado.get("document"):
-            self.usuario_actual = resultado["document"]
-            return True, self.usuario_actual
+        if usuario:
+            # Convertir ObjectId a string para serialización
+            usuario["_id"] = str(usuario["_id"])
+            self.usuario_actual = usuario
+            return True, usuario
         return False, "Credenciales incorrectas"
     
     def logout(self):
-        """Cierra sesión del usuario actual"""
+        """Cierra sesión"""
         self.usuario_actual = None
         return True
     
     # ========== GESTIÓN DE PROYECTOS ==========
     
     def guardar_proyecto(self, nombre, tipo, datos, columnas, callback=None):
-        """Guarda un proyecto asociado al usuario actual"""
+        """Guarda un proyecto en la nube"""
         if not self.usuario_actual:
             if callback:
                 callback(False, "Debes iniciar sesión primero")
             return False
         
-        email = self.usuario_actual["email"]
+        db = self._get_db()
+        proyectos = db.proyectos
         
         proyecto = {
             "nombre": nombre,
             "tipo": tipo,
             "datos": datos,
             "columnas": columnas,
-            "email_usuario": email,
-            "ultima_modificacion": self._fecha_actual()
+            "email_usuario": self.usuario_actual["email"],
+            "ultima_modificacion": datetime.now()
         }
         
-        # Buscar si ya existe
-        existe = self._request("findOne", "proyectos", filter={
-            "nombre": nombre,
-            "email_usuario": email
-        })
-        
-        if existe.get("document"):
-            # Actualizar
-            resultado = self._request("updateOne", "proyectos", 
-                                     filter={"nombre": nombre, "email_usuario": email},
-                                     update={"$set": proyecto})
-            success = "modifiedCount" in str(resultado)
-        else:
-            # Insertar nuevo
-            resultado = self._request("insertOne", "proyectos", document=proyecto)
-            success = resultado.get("insertedId") is not None
+        try:
+            # Buscar si ya existe
+            existe = proyectos.find_one({
+                "nombre": nombre,
+                "email_usuario": self.usuario_actual["email"]
+            })
             
-            # Agregar al array de proyectos del usuario
-            self._request("updateOne", "usuarios",
-                         filter={"email": email},
-                         update={"$addToSet": {"proyectos": nombre}})
-        
-        if callback:
-            callback(success, "Guardado" if success else "Error")
-        return success
+            if existe:
+                # Actualizar
+                proyectos.update_one(
+                    {"_id": existe["_id"]},
+                    {"$set": proyecto}
+                )
+            else:
+                # Insertar nuevo
+                proyectos.insert_one(proyecto)
+                # Actualizar lista de proyectos del usuario
+                db.usuarios.update_one(
+                    {"email": self.usuario_actual["email"]},
+                    {"$addToSet": {"proyectos": nombre}}
+                )
+            
+            if callback:
+                callback(True, "Guardado en la nube")
+            return True
+            
+        except Exception as e:
+            if callback:
+                callback(False, str(e))
+            return False
     
     def cargar_proyectos(self, callback=None):
         """Carga todos los proyectos del usuario actual"""
@@ -141,42 +147,52 @@ class CloudManager:
                 callback(False, [])
             return []
         
-        email = self.usuario_actual["email"]
+        db = self._get_db()
+        proyectos = db.proyectos
         
-        resultado = self._request("find", "proyectos", 
-                                 filter={"email_usuario": email},
-                                 limit=100)
-        
-        proyectos = resultado.get("documents", [])
-        
-        if callback:
-            callback(True, proyectos)
-        return proyectos
+        try:
+            resultados = proyectos.find({
+                "email_usuario": self.usuario_actual["email"]
+            })
+            
+            proyectos_lista = []
+            for proy in resultados:
+                proy["_id"] = str(proy["_id"])
+                proyectos_lista.append(proy)
+            
+            if callback:
+                callback(True, proyectos_lista)
+            return proyectos_lista
+            
+        except Exception as e:
+            if callback:
+                callback(False, [])
+            return []
     
     def eliminar_proyecto(self, nombre):
-        """Elimina un proyecto del usuario actual"""
+        """Elimina un proyecto"""
         if not self.usuario_actual:
             return False
         
-        email = self.usuario_actual["email"]
+        db = self._get_db()
         
-        resultado = self._request("deleteOne", "proyectos", 
-                                 filter={"nombre": nombre, "email_usuario": email})
-        
-        # Eliminar del array del usuario
-        self._request("updateOne", "usuarios",
-                     filter={"email": email},
-                     update={"$pull": {"proyectos": nombre}})
-        
-        return "deletedCount" in str(resultado)
+        try:
+            db.proyectos.delete_one({
+                "nombre": nombre,
+                "email_usuario": self.usuario_actual["email"]
+            })
+            
+            # Eliminar de la lista del usuario
+            db.usuarios.update_one(
+                {"email": self.usuario_actual["email"]},
+                {"$pull": {"proyectos": nombre}}
+            )
+            
+            return True
+        except Exception as e:
+            print(f"Error al eliminar: {e}")
+            return False
     
-    def compartir_proyecto(self, nombre, email_compartir):
-        """Comparte un proyecto con otro usuario"""
-        resultado = self._request("updateOne", "proyectos",
-                                 filter={"nombre": nombre, "email_usuario": self.usuario_actual["email"]},
-                                 update={"$addToSet": {"compartido_con": email_compartir}})
-        return resultado.get("modifiedCount", 0) > 0
-    
-    def _fecha_actual(self):
-        from datetime import datetime
-        return datetime.now().isoformat()
+    def crear_sesion(self):
+        """Método para compatibilidad con código existente"""
+        return self._conectar()
