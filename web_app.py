@@ -1,4 +1,4 @@
-# web_app.py - Versión con diseño profesional tipo escritorio contable
+# web_app.py - Versión COMPLETAMENTE CORREGIDA
 
 import streamlit as st
 import pandas as pd
@@ -7,24 +7,23 @@ import pymongo
 from datetime import datetime
 import openpyxl
 from io import BytesIO
+import matplotlib.pyplot as plt
 
 # ========== CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
     page_title="Contaduría | Sistema Contable",
-    page_icon="😎",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ========== CSS PERSONALIZADO (ESTILO CONTABLE) ==========
+# ========== CSS PERSONALIZADO ==========
 st.markdown("""
 <style>
-    /* Estilo general - fondo gris muy claro tipo papel */
     .stApp {
         background-color: #f5f7fa;
     }
     
-    /* Títulos principales */
     .main-header {
         font-size: 24px;
         font-weight: 600;
@@ -35,7 +34,6 @@ st.markdown("""
         font-family: 'Segoe UI', 'Roboto', sans-serif;
     }
     
-    /* Títulos de sección */
     .section-header {
         font-size: 18px;
         font-weight: 500;
@@ -46,7 +44,6 @@ st.markdown("""
         border-left: 3px solid #1e3a5f;
     }
     
-    /* Tarjetas de métricas */
     .metric-card {
         background-color: white;
         border-radius: 8px;
@@ -69,7 +66,6 @@ st.markdown("""
         margin-top: 5px;
     }
     
-    /* Botones más sobrios */
     .stButton button {
         background-color: #1e3a5f;
         color: white;
@@ -84,24 +80,20 @@ st.markdown("""
         border: none;
     }
     
-    /* Sidebar más limpio */
     [data-testid="stSidebar"] {
         background-color: #ffffff;
         border-right: 1px solid #e2e8f0;
     }
     
-    /* Data editor estilo tabla contable */
     [data-testid="stDataFrame"] {
         border: 1px solid #e2e8f0;
         border-radius: 6px;
     }
     
-    /* Ocultar elementos innecesarios */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Inputs más compactos */
     .stTextInput input, .stSelectbox select {
         border-radius: 4px;
         border: 1px solid #cbd5e1;
@@ -141,13 +133,14 @@ if "usuario" not in st.session_state:
     st.session_state.usuario = None
 if "proyecto_actual" not in st.session_state:
     st.session_state.proyecto_actual = None
+if "fig_actual" not in st.session_state:
+    st.session_state.fig_actual = None
 
-# ========== SIDEBAR - MENÚ LATERAL ==========
+# ========== SIDEBAR ==========
 with st.sidebar:
-    # Logo / Título
     st.markdown("""
     <div style="text-align: center; padding: 20px 0 10px 0;">
-        <span style="font-size: 28px;">😎</span>
+        <span style="font-size: 28px;">📊</span>
         <h2 style="color: #1e3a5f; margin: 0;">Contaduría</h2>
         <p style="color: #64748b; font-size: 12px;">Sistema Contable</p>
     </div>
@@ -156,7 +149,6 @@ with st.sidebar:
     st.divider()
     
     if not st.session_state.usuario:
-        # ===== LOGIN =====
         with st.expander("🔐 Iniciar Sesión", expanded=True):
             email = st.text_input("Email", key="login_email", placeholder="usuario@ejemplo.com")
             password = st.text_input("Contraseña", type="password", key="login_pass")
@@ -174,7 +166,6 @@ with st.sidebar:
                 else:
                     st.warning("Complete todos los campos")
         
-        # ===== REGISTRO =====
         with st.expander("📝 Registrarse"):
             reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
             reg_email = st.text_input("Email", key="reg_email")
@@ -200,7 +191,6 @@ with st.sidebar:
                     st.error("Contraseña muy corta o no coinciden")
     
     else:
-        # ===== USUARIO LOGUEADO =====
         st.markdown(f"""
         <div style="background-color: #e8f0fe; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
             <p style="margin: 0; font-size: 13px; color: #1e3a5f;">👤 Usuario</p>
@@ -216,7 +206,6 @@ with st.sidebar:
         
         st.divider()
         
-        # ===== LISTA DE PROYECTOS =====
         st.markdown('<p style="font-weight: 600; margin-bottom: 10px;">📁 Proyectos</p>', unsafe_allow_html=True)
         
         proyectos = list(get_proyectos().find({"email_usuario": st.session_state.usuario["email"]}))
@@ -238,7 +227,6 @@ with st.sidebar:
         
         st.divider()
         
-        # ===== NUEVO PROYECTO =====
         st.markdown('<p style="font-weight: 600; margin-bottom: 10px;">➕ Nuevo proyecto</p>', unsafe_allow_html=True)
         nuevo_nombre = st.text_input("Nombre", key="nuevo_nombre", placeholder="Ej: Cliente ABC")
         nuevo_tipo = st.selectbox("Plantilla", ["Libro Diario", "Balanza de Comprobación", "Cuentas T"], key="nuevo_tipo")
@@ -269,14 +257,12 @@ with st.sidebar:
 if st.session_state.proyecto_actual:
     proyecto = st.session_state.proyecto_actual
     
-    # Encabezado del proyecto
     st.markdown(f'<div class="main-header">{proyecto["nombre"]} <span style="font-size: 14px; font-weight: normal;">({proyecto.get("tipo", "Libro Diario")})</span></div>', unsafe_allow_html=True)
     
     columnas = proyecto.get("columnas", ["Fecha", "Descripción", "Debe", "Haber"])
     datos = proyecto.get("datos", [])
     df = pd.DataFrame(datos, columns=columnas) if datos else pd.DataFrame(columns=columnas)
     
-    # Editor de tabla
     edited_df = st.data_editor(
         df,
         num_rows="dynamic",
@@ -373,17 +359,12 @@ if st.session_state.proyecto_actual:
         </div>
         """, unsafe_allow_html=True)
 
-    # web_app.py - Agregar DESPUÉS de las métricas y ANTES del Estado de Resultados
-
-# ========== GRÁFICAS ==========
+    # ========== GRÁFICAS ==========
     st.markdown('<div class="section-header">📈 Análisis Gráfico</div>', unsafe_allow_html=True)
 
-    # Verificar si hay datos para graficar
     if len(edited_df) > 0:
-        # Preparar datos para gráficas
         if "Debe" in edited_df.columns and "Haber" in edited_df.columns:
             
-            # Selector de tipo de gráfica
             tipo_grafica = st.selectbox(
                 "Tipo de gráfico",
                 ["Barras - Debe vs Haber", "Líneas - Evolución", "Pastel - Distribución", "Dona - Proporciones"],
@@ -393,14 +374,10 @@ if st.session_state.proyecto_actual:
             col_graf1, col_graf2 = st.columns([3, 1])
             
             with col_graf1:
-                # Crear DataFrame para gráficas
                 df_graf = edited_df.copy()
-                
-                # Agregar índice para evolución
                 df_graf['Registro'] = range(1, len(df_graf) + 1)
                 
                 if tipo_grafica == "Barras - Debe vs Haber":
-                    # Gráfico de barras comparativo
                     st.bar_chart(
                         df_graf[["Debe", "Haber"]].fillna(0),
                         x_label="Registro",
@@ -408,20 +385,18 @@ if st.session_state.proyecto_actual:
                         color=["#e74c3c", "#27ae60"]
                     )
                     st.caption("Comparación de Débitos vs Créditos por registro")
+                    st.session_state.fig_actual = None
                     
                 elif tipo_grafica == "Líneas - Evolución":
-                    # Gráfico de líneas
                     st.line_chart(
                         df_graf[["Debe", "Haber"]].fillna(0),
                         x_label="Registro",
                         y_label="Monto ($)"
                     )
                     st.caption("Evolución de movimientos contables")
+                    st.session_state.fig_actual = None
                     
                 elif tipo_grafica == "Pastel - Distribución":
-                    # Distribución con matplotlib
-                    import matplotlib.pyplot as plt
-                    
                     total_debe_graf = df_graf["Debe"].sum()
                     total_haber_graf = df_graf["Haber"].sum()
                     
@@ -433,17 +408,15 @@ if st.session_state.proyecto_actual:
                     ax.pie(sizes, labels=labels, colors=colors_graf, autopct='%1.1f%%', startangle=90)
                     ax.set_title('Distribución Debe vs Haber')
                     st.pyplot(fig)
+                    st.session_state.fig_actual = fig
                     plt.close()
                     
                 else:  # Dona
-                    import matplotlib.pyplot as plt
-                    
-                    # Clasificar cuentas si existe columna Cuenta
                     if "Cuenta" in df_graf.columns:
                         cuentas_agrupadas = df_graf.groupby("Cuenta")["Debe"].sum().sort_values(ascending=False).head(6)
                         
                         fig, ax = plt.subplots(figsize=(8, 6))
-                        wedges, texts, autotexts = ax.pie(
+                        ax.pie(
                             cuentas_agrupadas.values,
                             labels=cuentas_agrupadas.index,
                             autopct='%1.1f%%',
@@ -452,31 +425,32 @@ if st.session_state.proyecto_actual:
                         )
                         ax.set_title('Top cuentas por movimiento (Dona)')
                         st.pyplot(fig)
+                        st.session_state.fig_actual = fig
                         plt.close()
                     else:
                         st.info("Agregue una columna 'Cuenta' para ver distribución por cuentas")
+                        st.session_state.fig_actual = None
             
             with col_graf2:
-                # Botones de exportación de gráficas
                 st.markdown("##### 📥 Exportar gráfica")
                 
                 if st.button("📸 Exportar como PNG", use_container_width=True, key="btn_export_png"):
-                    # Capturar la gráfica actual
-                    fig = plt.gcf()
-                    if fig:
+                    if st.session_state.fig_actual is not None:
                         buf = BytesIO()
-                        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+                        st.session_state.fig_actual.savefig(buf, format='png', dpi=150, bbox_inches='tight')
                         buf.seek(0)
                         st.download_button(
                             label="⬇️ Descargar PNG",
                             data=buf,
                             file_name=f"grafica_{proyecto['nombre']}.png",
                             mime="image/png",
-                            use_container_width=True
+                            use_container_width=True,
+                            key="download_png"
                         )
+                    else:
+                        st.warning("No hay gráfica para exportar (seleccione Pastel o Dona)")
                 
-                # Resumen estadístico
-                st.markdown("##### 😎 Resumen")
+                st.markdown("##### 📊 Resumen")
                 stats_df = pd.DataFrame({
                     "Métrica": ["Mínimo", "Máximo", "Promedio", "Suma"],
                     "Debe": [
@@ -493,10 +467,12 @@ if st.session_state.proyecto_actual:
                     ]
                 })
                 st.dataframe(stats_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("Se requieren columnas 'Debe' y 'Haber' para generar gráficas")
     else:
         st.info("Agregue datos a la tabla para visualizar gráficas")
     
-    # Estado de Resultados (si hay datos)
+    # Estado de Resultados
     if len(edited_df) > 0 and "Descripción" in edited_df.columns:
         st.markdown('<div class="section-header">Estado de Resultados</div>', unsafe_allow_html=True)
         
@@ -510,23 +486,23 @@ if st.session_state.proyecto_actual:
         res3.metric("Utilidad Neta", f"${utilidad:,.2f}", 
                     delta="Ganancia" if utilidad > 0 else "Pérdida" if utilidad < 0 else None)
 
-    elif st.session_state.usuario:
-        st.markdown("""
-        <div style="text-align: center; padding: 60px 20px;">
-            <span style="font-size: 48px;">📊</span>
-            <h2 style="color: #64748b;">Bienvenido a Contaduría</h2>
-            <p style="color: #94a3b8;">Seleccione o cree un proyecto en el menú lateral</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div style="text-align: center; padding: 60px 20px;">
-            <span style="font-size: 48px;">📊</span>
-            <h2 style="color: #64748b;">Contaduría</h2>
-            <p style="color: #94a3b8;">Sistema de gestión contable</p>
-            <p style="color: #cbd5e1; font-size: 14px;">Inicie sesión o regístrese para continuar</p>
-        </div>
-        """, unsafe_allow_html=True)
+elif st.session_state.usuario:
+    st.markdown("""
+    <div style="text-align: center; padding: 60px 20px;">
+        <span style="font-size: 48px;">📊</span>
+        <h2 style="color: #64748b;">Bienvenido a Contaduría</h2>
+        <p style="color: #94a3b8;">Seleccione o cree un proyecto en el menú lateral</p>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div style="text-align: center; padding: 60px 20px;">
+        <span style="font-size: 48px;">📊</span>
+        <h2 style="color: #64748b;">Contaduría</h2>
+        <p style="color: #94a3b8;">Sistema de gestión contable</p>
+        <p style="color: #cbd5e1; font-size: 14px;">Inicie sesión o regístrese para continuar</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ========== FOOTER ==========
 st.divider()
