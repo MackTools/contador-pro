@@ -510,23 +510,23 @@ else:
         res3.metric("Utilidad Neta", f"${utilidad:,.2f}", 
                     delta="Ganancia" if utilidad > 0 else "Pérdida" if utilidad < 0 else None)
 
-elif st.session_state.usuario:
-    st.markdown("""
-    <div style="text-align: center; padding: 60px 20px;">
-        <span style="font-size: 48px;">📊</span>
-        <h2 style="color: #64748b;">Bienvenido a Contaduría</h2>
-        <p style="color: #94a3b8;">Seleccione o cree un proyecto en el menú lateral</p>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <div style="text-align: center; padding: 60px 20px;">
-        <span style="font-size: 48px;">📊</span>
-        <h2 style="color: #64748b;">Contaduría</h2>
-        <p style="color: #94a3b8;">Sistema de gestión contable</p>
-        <p style="color: #cbd5e1; font-size: 14px;">Inicie sesión o regístrese para continuar</p>
-    </div>
-    """, unsafe_allow_html=True)
+    elif st.session_state.usuario:
+        st.markdown("""
+        <div style="text-align: center; padding: 60px 20px;">
+            <span style="font-size: 48px;">📊</span>
+            <h2 style="color: #64748b;">Bienvenido a Contaduría</h2>
+            <p style="color: #94a3b8;">Seleccione o cree un proyecto en el menú lateral</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="text-align: center; padding: 60px 20px;">
+            <span style="font-size: 48px;">📊</span>
+            <h2 style="color: #64748b;">Contaduría</h2>
+            <p style="color: #94a3b8;">Sistema de gestión contable</p>
+            <p style="color: #cbd5e1; font-size: 14px;">Inicie sesión o regístrese para continuar</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ========== FOOTER ==========
 st.divider()
