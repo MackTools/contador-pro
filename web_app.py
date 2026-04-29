@@ -353,7 +353,7 @@ if st.session_state.proyecto_actual:
             "Debe": st.column_config.NumberColumn("Debe", format="$ %.2f"),
             "Haber": st.column_config.NumberColumn("Haber", format="$ %.2f"),
             "IVA %": st.column_config.NumberColumn("IVA %", format="%.2f%%"),
-            "Fecha": st.column_config.TextColumn("Fecha", placeholder="DD/MM/AAAA")
+            "Fecha": st.column_config.Column("Fecha")
         }
     )
     
