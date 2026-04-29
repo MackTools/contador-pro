@@ -11,7 +11,7 @@ from io import BytesIO
 # ========== CONFIGURACIÓN DE PÁGINA ==========
 st.set_page_config(
     page_title="Contaduría | Sistema Contable",
-    page_icon="❤️❤️",
+    page_icon="😎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
