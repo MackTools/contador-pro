@@ -9,7 +9,7 @@ class CloudManager:
     def __init__(self):
         # ⚠️ REEMPLAZA ESTA CADENA con la que copiaste de MongoDB Atlas
         # Formato: mongodb+srv://USUARIO:CONTRASEÑA@cluster0.xxxxx.mongodb.net/
-        self.MONGO_URI = "mongodb+srv://contador_user:<db_password>@cluster0.fhvaqrj.mongodb.net/?appName=Cluster0"
+        self.MONGO_URI = "mongodb+srv://contador_user:123@cluster0.fhvaqrj.mongodb.net/?appName=Cluster0"
         
         self.DB_NAME = "contador_pro"
         self.usuario_actual = None
