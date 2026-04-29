@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv
+
+# Archivos de base de datos local
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos temporales
+*.log
+*.tmp
+*.temp
+
+# Archivos de exportación
+*.xlsx
+*.pdf
+*.csv
+
+# Archivos de configuración local
+config_local.py
+.secrets
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de caché de streamlit
+.streamlit/
