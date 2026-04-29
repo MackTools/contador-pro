@@ -376,125 +376,125 @@ if st.session_state.proyecto_actual:
     # web_app.py - Agregar DESPUÉS de las métricas y ANTES del Estado de Resultados
 
 # ========== GRÁFICAS ==========
-st.markdown('<div class="section-header">📈 Análisis Gráfico</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📈 Análisis Gráfico</div>', unsafe_allow_html=True)
 
-# Verificar si hay datos para graficar
-if len(edited_df) > 0:
-    # Preparar datos para gráficas
-    if "Debe" in edited_df.columns and "Haber" in edited_df.columns:
-        
-        # Selector de tipo de gráfica
-        tipo_grafica = st.selectbox(
-            "Tipo de gráfico",
-            ["Barras - Debe vs Haber", "Líneas - Evolución", "Pastel - Distribución", "Dona - Proporciones"],
-            key="tipo_grafica"
-        )
-        
-        col_graf1, col_graf2 = st.columns([3, 1])
-        
-        with col_graf1:
-            # Crear DataFrame para gráficas
-            df_graf = edited_df.copy()
+    # Verificar si hay datos para graficar
+    if len(edited_df) > 0:
+        # Preparar datos para gráficas
+        if "Debe" in edited_df.columns and "Haber" in edited_df.columns:
             
-            # Agregar índice para evolución
-            df_graf['Registro'] = range(1, len(df_graf) + 1)
+            # Selector de tipo de gráfica
+            tipo_grafica = st.selectbox(
+                "Tipo de gráfico",
+                ["Barras - Debe vs Haber", "Líneas - Evolución", "Pastel - Distribución", "Dona - Proporciones"],
+                key="tipo_grafica"
+            )
             
-            if tipo_grafica == "Barras - Debe vs Haber":
-                # Gráfico de barras comparativo
-                st.bar_chart(
-                    df_graf[["Debe", "Haber"]].fillna(0),
-                    x_label="Registro",
-                    y_label="Monto ($)",
-                    color=["#e74c3c", "#27ae60"]
-                )
-                st.caption("Comparación de Débitos vs Créditos por registro")
+            col_graf1, col_graf2 = st.columns([3, 1])
+            
+            with col_graf1:
+                # Crear DataFrame para gráficas
+                df_graf = edited_df.copy()
                 
-            elif tipo_grafica == "Líneas - Evolución":
-                # Gráfico de líneas
-                st.line_chart(
-                    df_graf[["Debe", "Haber"]].fillna(0),
-                    x_label="Registro",
-                    y_label="Monto ($)"
-                )
-                st.caption("Evolución de movimientos contables")
+                # Agregar índice para evolución
+                df_graf['Registro'] = range(1, len(df_graf) + 1)
                 
-            elif tipo_grafica == "Pastel - Distribución":
-                # Distribución con matplotlib
-                import matplotlib.pyplot as plt
-                
-                total_debe_graf = df_graf["Debe"].sum()
-                total_haber_graf = df_graf["Haber"].sum()
-                
-                fig, ax = plt.subplots(figsize=(8, 6))
-                sizes = [total_debe_graf, total_haber_graf]
-                labels = [f'Debe\n${total_debe_graf:,.2f}', f'Haber\n${total_haber_graf:,.2f}']
-                colors_graf = ['#e74c3c', '#27ae60']
-                
-                ax.pie(sizes, labels=labels, colors=colors_graf, autopct='%1.1f%%', startangle=90)
-                ax.set_title('Distribución Debe vs Haber')
-                st.pyplot(fig)
-                plt.close()
-                
-            else:  # Dona
-                import matplotlib.pyplot as plt
-                
-                # Clasificar cuentas si existe columna Cuenta
-                if "Cuenta" in df_graf.columns:
-                    cuentas_agrupadas = df_graf.groupby("Cuenta")["Debe"].sum().sort_values(ascending=False).head(6)
+                if tipo_grafica == "Barras - Debe vs Haber":
+                    # Gráfico de barras comparativo
+                    st.bar_chart(
+                        df_graf[["Debe", "Haber"]].fillna(0),
+                        x_label="Registro",
+                        y_label="Monto ($)",
+                        color=["#e74c3c", "#27ae60"]
+                    )
+                    st.caption("Comparación de Débitos vs Créditos por registro")
+                    
+                elif tipo_grafica == "Líneas - Evolución":
+                    # Gráfico de líneas
+                    st.line_chart(
+                        df_graf[["Debe", "Haber"]].fillna(0),
+                        x_label="Registro",
+                        y_label="Monto ($)"
+                    )
+                    st.caption("Evolución de movimientos contables")
+                    
+                elif tipo_grafica == "Pastel - Distribución":
+                    # Distribución con matplotlib
+                    import matplotlib.pyplot as plt
+                    
+                    total_debe_graf = df_graf["Debe"].sum()
+                    total_haber_graf = df_graf["Haber"].sum()
                     
                     fig, ax = plt.subplots(figsize=(8, 6))
-                    wedges, texts, autotexts = ax.pie(
-                        cuentas_agrupadas.values,
-                        labels=cuentas_agrupadas.index,
-                        autopct='%1.1f%%',
-                        startangle=90,
-                        wedgeprops=dict(width=0.5)
-                    )
-                    ax.set_title('Top cuentas por movimiento (Dona)')
+                    sizes = [total_debe_graf, total_haber_graf]
+                    labels = [f'Debe\n${total_debe_graf:,.2f}', f'Haber\n${total_haber_graf:,.2f}']
+                    colors_graf = ['#e74c3c', '#27ae60']
+                    
+                    ax.pie(sizes, labels=labels, colors=colors_graf, autopct='%1.1f%%', startangle=90)
+                    ax.set_title('Distribución Debe vs Haber')
                     st.pyplot(fig)
                     plt.close()
-                else:
-                    st.info("Agregue una columna 'Cuenta' para ver distribución por cuentas")
-        
-        with col_graf2:
-            # Botones de exportación de gráficas
-            st.markdown("##### 📥 Exportar gráfica")
+                    
+                else:  # Dona
+                    import matplotlib.pyplot as plt
+                    
+                    # Clasificar cuentas si existe columna Cuenta
+                    if "Cuenta" in df_graf.columns:
+                        cuentas_agrupadas = df_graf.groupby("Cuenta")["Debe"].sum().sort_values(ascending=False).head(6)
+                        
+                        fig, ax = plt.subplots(figsize=(8, 6))
+                        wedges, texts, autotexts = ax.pie(
+                            cuentas_agrupadas.values,
+                            labels=cuentas_agrupadas.index,
+                            autopct='%1.1f%%',
+                            startangle=90,
+                            wedgeprops=dict(width=0.5)
+                        )
+                        ax.set_title('Top cuentas por movimiento (Dona)')
+                        st.pyplot(fig)
+                        plt.close()
+                    else:
+                        st.info("Agregue una columna 'Cuenta' para ver distribución por cuentas")
             
-            if st.button("📸 Exportar como PNG", use_container_width=True, key="btn_export_png"):
-                # Capturar la gráfica actual
-                fig = plt.gcf()
-                if fig:
-                    buf = BytesIO()
-                    fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-                    buf.seek(0)
-                    st.download_button(
-                        label="⬇️ Descargar PNG",
-                        data=buf,
-                        file_name=f"grafica_{proyecto['nombre']}.png",
-                        mime="image/png",
-                        use_container_width=True
-                    )
-            
-            # Resumen estadístico
-            st.markdown("##### 😎 Resumen")
-            stats_df = pd.DataFrame({
-                "Métrica": ["Mínimo", "Máximo", "Promedio", "Suma"],
-                "Debe": [
-                    f"${edited_df['Debe'].min():,.2f}" if len(edited_df) > 0 else "$0",
-                    f"${edited_df['Debe'].max():,.2f}" if len(edited_df) > 0 else "$0",
-                    f"${edited_df['Debe'].mean():,.2f}" if len(edited_df) > 0 else "$0",
-                    f"${edited_df['Debe'].sum():,.2f}" if len(edited_df) > 0 else "$0"
-                ],
-                "Haber": [
-                    f"${edited_df['Haber'].min():,.2f}" if len(edited_df) > 0 else "$0",
-                    f"${edited_df['Haber'].max():,.2f}" if len(edited_df) > 0 else "$0",
-                    f"${edited_df['Haber'].mean():,.2f}" if len(edited_df) > 0 else "$0",
-                    f"${edited_df['Haber'].sum():,.2f}" if len(edited_df) > 0 else "$0"
-                ]
-            })
-            st.dataframe(stats_df, use_container_width=True, hide_index=True)
-else:
-    st.info("Agregue datos a la tabla para visualizar gráficas")
+            with col_graf2:
+                # Botones de exportación de gráficas
+                st.markdown("##### 📥 Exportar gráfica")
+                
+                if st.button("📸 Exportar como PNG", use_container_width=True, key="btn_export_png"):
+                    # Capturar la gráfica actual
+                    fig = plt.gcf()
+                    if fig:
+                        buf = BytesIO()
+                        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+                        buf.seek(0)
+                        st.download_button(
+                            label="⬇️ Descargar PNG",
+                            data=buf,
+                            file_name=f"grafica_{proyecto['nombre']}.png",
+                            mime="image/png",
+                            use_container_width=True
+                        )
+                
+                # Resumen estadístico
+                st.markdown("##### 😎 Resumen")
+                stats_df = pd.DataFrame({
+                    "Métrica": ["Mínimo", "Máximo", "Promedio", "Suma"],
+                    "Debe": [
+                        f"${edited_df['Debe'].min():,.2f}" if len(edited_df) > 0 else "$0",
+                        f"${edited_df['Debe'].max():,.2f}" if len(edited_df) > 0 else "$0",
+                        f"${edited_df['Debe'].mean():,.2f}" if len(edited_df) > 0 else "$0",
+                        f"${edited_df['Debe'].sum():,.2f}" if len(edited_df) > 0 else "$0"
+                    ],
+                    "Haber": [
+                        f"${edited_df['Haber'].min():,.2f}" if len(edited_df) > 0 else "$0",
+                        f"${edited_df['Haber'].max():,.2f}" if len(edited_df) > 0 else "$0",
+                        f"${edited_df['Haber'].mean():,.2f}" if len(edited_df) > 0 else "$0",
+                        f"${edited_df['Haber'].sum():,.2f}" if len(edited_df) > 0 else "$0"
+                    ]
+                })
+                st.dataframe(stats_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("Agregue datos a la tabla para visualizar gráficas")
     
     # Estado de Resultados (si hay datos)
     if len(edited_df) > 0 and "Descripción" in edited_df.columns:
