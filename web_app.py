@@ -971,3 +971,347 @@ else:
 # ========== FOOTER ==========
 st.divider()
 st.markdown('<p style="text-align: center; color: #64748b; font-size: 12px;">Contaduría · Sistema Contable Profesional</p>', unsafe_allow_html=True)
+
+
+# ========== SISTEMA DE FÓRMULAS Y COLUMNAS DINÁMICAS ==========
+
+class FormulaEngine:
+    """Motor de fórmulas para la tabla contable"""
+    
+    @staticmethod
+    def evaluar_formula(formula, df, columna_actual=None):
+        """Evalúa una fórmula estilo Excel"""
+        try:
+            # Limpiar la fórmula
+            formula = str(formula).strip()
+            if not formula.startswith('='):
+                return None
+            
+            # Quitar el signo =
+            expr = formula[1:].strip()
+            
+            # Reemplazar referencias a columnas (ej: [Debe] + [Haber])
+            import re
+            
+            def replace_column(match):
+                col_name = match.group(1)
+                if col_name in df.columns:
+                    # Retornar la serie de pandas
+                    return f"df['{col_name}']"
+                return match.group(0)
+            
+            # Buscar patrones [NombreColumna]
+            expr = re.sub(r'\[([^\]]+)\]', replace_column, expr)
+            
+            # Operaciones matemáticas básicas
+            # Permitir: +, -, *, /, %, **
+            safe_dict = {
+                'df': df,
+                'sum': sum,
+                'mean': lambda x: sum(x)/len(x) if len(x) > 0 else 0,
+                'max': max,
+                'min': min,
+                'abs': abs,
+                'round': round,
+                'len': len,
+                '__builtins__': {}
+            }
+            
+            # Ejecutar la expresión
+            result = eval(expr, safe_dict)
+            
+            # Si el resultado es una serie, aplicarla fila por fila
+            if hasattr(result, 'iloc'):
+                return result
+            return result
+            
+        except Exception as e:
+            return f"Error: {str(e)}"
+    
+    @staticmethod
+    def aplicar_formula_columna(df, nombre_columna, formula, por_fila=True):
+        """Aplica una fórmula a toda una columna"""
+        try:
+            if por_fila:
+                # Aplicar fórmula fila por fila
+                resultados = []
+                for idx, row in df.iterrows():
+                    # Crear un DataFrame de una sola fila para la evaluación
+                    temp_df = pd.DataFrame([row.to_dict()])
+                    resultado = FormulaEngine.evaluar_formula(formula, temp_df)
+                    if isinstance(resultado, (int, float)):
+                        resultados.append(resultado)
+                    elif hasattr(resultado, 'iloc'):
+                        resultados.append(resultado.iloc[0])
+                    else:
+                        resultados.append(resultado)
+                
+                df[nombre_columna] = resultados
+            else:
+                # Aplicar fórmula a toda la columna (sumas totales, etc)
+                resultado = FormulaEngine.evaluar_formula(formula, df)
+                if isinstance(resultado, (int, float)):
+                    df[nombre_columna] = resultado
+                elif hasattr(resultado, '__len__') and len(resultado) == len(df):
+                    df[nombre_columna] = resultado
+            
+            return df
+        except Exception as e:
+            st.error(f"Error al aplicar fórmula: {e}")
+            return df
+    
+    @staticmethod
+    def sugerir_formulas(df):
+        """Sugiere fórmulas comunes basadas en las columnas"""
+        sugerencias = []
+        
+        if 'Debe' in df.columns and 'Haber' in df.columns:
+            sugerencias.append({
+                'nombre': 'Saldo',
+                'formula': '=[Debe] - [Haber]',
+                'descripcion': 'Calcula la diferencia entre Debe y Haber'
+            })
+            sugerencias.append({
+                'nombre': 'Total Movimiento',
+                'formula': '=[Debe] + [Haber]',
+                'descripcion': 'Suma de Debe y Haber'
+            })
+            
+        if 'IVA %' in df.columns and 'Debe' in df.columns:
+            sugerencias.append({
+                'nombre': 'IVA Calculado',
+                'formula': '=[Debe] * ([IVA %] / 100)',
+                'descripcion': 'Calcula el IVA basado en el porcentaje'
+            })
+        
+        if 'Cantidad' in df.columns and 'Precio' in df.columns:
+            sugerencias.append({
+                'nombre': 'Subtotal',
+                'formula': '=[Cantidad] * [Precio]',
+                'descripcion': 'Multiplica cantidad por precio'
+            })
+        
+        # Fórmulas de totales
+        sugerencias.append({
+            'nombre': 'Total General',
+            'formula': 'sum([Debe])',
+            'descripcion': 'Suma total de la columna Debe',
+            'es_total': True
+        })
+        
+        sugerencias.append({
+            'nombre': 'Promedio Debe',
+            'formula': 'mean([Debe])',
+            'descripcion': 'Promedio de la columna Debe',
+            'es_total': True
+        })
+        
+        return sugerencias
+
+def mostrar_gestor_formulas(df):
+    """Interfaz para gestionar fórmulas"""
+    
+    st.markdown("### Gestor de Fórmulas")
+    
+    tab1, tab2, tab3 = st.tabs([" Nueva Columna", " Aplicar Fórmula", "💡 Sugerencias"])
+    
+    with tab1:
+        st.markdown("#### Crear nueva columna calculada")
+        nueva_col = st.text_input("Nombre de la nueva columna", key="nueva_col_nombre")
+        
+        col1_f, col2_f = st.columns(2)
+        with col1_f:
+            formula_ejemplo = st.text_area(
+                "Fórmula (ej: =[Debe] - [Haber])", 
+                key="formula_nueva_col",
+                placeholder="Ejemplos:\n=[Debe] + [Haber]\n=[Debe] * 1.21\n=sum([Debe])\n=mean([Debe])"
+            )
+        with col2_f:
+            st.markdown("**Referencia de columnas disponibles:**")
+            for col in df.columns:
+                st.code(f"[{col}]", language="text")
+            st.caption("Operadores: +, -, *, /, %")
+            st.caption("Funciones: sum(), mean(), max(), min(), abs(), round()")
+        
+        if st.button("Crear columna calculada", key="btn_crear_columna"):
+            if nueva_col and formula_ejemplo:
+                if nueva_col in df.columns:
+                    st.warning(f"La columna '{nueva_col}' ya existe")
+                else:
+                    df_temp = df.copy()
+                    if formula_ejemplo.startswith('='):
+                        # Determinar si es fórmula fila por fila o total
+                        if any(func in formula_ejemplo for func in ['sum(', 'mean(', 'max(', 'min(']):
+                            # Fórmula total (un solo valor para toda la columna)
+                            resultado = FormulaEngine.evaluar_formula(formula_ejemplo, df_temp)
+                            if isinstance(resultado, (int, float)):
+                                df_temp[nueva_col] = resultado
+                                st.success(f"Columna '{nueva_col}' creada con valor constante: {resultado}")
+                            else:
+                                df_temp[nueva_col] = resultado
+                        else:
+                            # Fórmula fila por fila
+                            df_temp = FormulaEngine.aplicar_formula_columna(df_temp, nueva_col, formula_ejemplo, por_fila=True)
+                            st.success(f"Columna '{nueva_col}' creada exitosamente")
+                        
+                        return df_temp
+                    else:
+                        st.error("Las fórmulas deben comenzar con '='")
+            else:
+                st.warning("Complete todos los campos")
+    
+    with tab2:
+        st.markdown("#### Aplicar fórmula a columna existente")
+        columna_existente = st.selectbox("Seleccionar columna", df.columns.tolist() if len(df.columns) > 0 else ["No hay columnas"])
+        
+        formula_aplicar = st.text_area(
+            "Fórmula", 
+            key="formula_aplicar",
+            placeholder=f"Ejemplo para modificar '{columna_existente}':\n=[Debe] * 1.21\n=[Debe] + [Haber]\n=abs([{columna_existente}])"
+        )
+        
+        if st.button("Aplicar fórmula", key="btn_aplicar_formula"):
+            if formula_aplicar.startswith('='):
+                df_temp = df.copy()
+                df_temp = FormulaEngine.aplicar_formula_columna(df_temp, columna_existente, formula_aplicar, por_fila=True)
+                st.success(f"Fórmula aplicada a '{columna_existente}'")
+                return df_temp
+            else:
+                st.error("Las fórmulas deben comenzar con '='")
+    
+    with tab3:
+        st.markdown("#### Fórmulas sugeridas")
+        sugerencias = FormulaEngine.sugerir_formulas(df)
+        
+        if sugerencias:
+            for sug in sugerencias:
+                with st.expander(f"📊 {sug['nombre']} - {sug['descripcion']}"):
+                    st.code(sug['formula'], language="text")
+                    if st.button(f"Usar {sug['nombre']}", key=f"usar_{sug['nombre']}"):
+                        df_temp = df.copy()
+                        if sug.get('es_total', False):
+                            resultado = FormulaEngine.evaluar_formula(sug['formula'], df_temp)
+                            st.info(f"Resultado: {resultado}")
+                        else:
+                            df_temp = FormulaEngine.aplicar_formula_columna(df_temp, sug['nombre'], sug['formula'], por_fila=True)
+                            st.success(f"Columna '{sug['nombre']}' agregada")
+                        return df_temp
+        else:
+            st.info("No hay sugerencias disponibles con las columnas actuales")
+            st.markdown("**Para obtener sugerencias, asegúrate de tener columnas como:**")
+            st.markdown("- Debe y Haber (para saldos)")
+            st.markdown("- Cantidad y Precio (para subtotales)")
+            st.markdown("- IVA % (para cálculo de impuestos)")
+    
+    return df  # Devolver el df sin cambios si no se aplicó nada
+
+def mostrar_calculadora_rapida(df):
+    """Calculadora rápida para operaciones entre columnas"""
+    
+    with st.expander("🔢 Calculadora rápida"):
+        st.markdown("#### Operaciones entre columnas")
+        
+        col_calc1, col_calc2, col_calc3 = st.columns(3)
+        
+        with col_calc1:
+            columna_a = st.selectbox("Columna A", df.columns.tolist(), key="calc_col_a")
+        with col_calc2:
+            operacion = st.selectbox("Operación", ["+", "-", "*", "/", "%"], key="calc_op")
+        with col_calc3:
+            columna_b = st.selectbox("Columna B", ["(Constante)"] + df.columns.tolist(), key="calc_col_b")
+        
+        if columna_b == "(Constante)":
+            valor_constante = st.number_input("Valor constante", value=0.0, step=0.01, key="calc_constante")
+            resultado_nombre = st.text_input("Nombre resultado", value=f"{columna_a}_{operacion}_constante", key="calc_resultado_nombre")
+            
+            if st.button("Calcular", key="btn_calcular"):
+                df_temp = df.copy()
+                if operacion == "+":
+                    df_temp[resultado_nombre] = df_temp[columna_a] + valor_constante
+                elif operacion == "-":
+                    df_temp[resultado_nombre] = df_temp[columna_a] - valor_constante
+                elif operacion == "*":
+                    df_temp[resultado_nombre] = df_temp[columna_a] * valor_constante
+                elif operacion == "/":
+                    df_temp[resultado_nombre] = df_temp[columna_a] / valor_constante if valor_constante != 0 else 0
+                elif operacion == "%":
+                    df_temp[resultado_nombre] = df_temp[columna_a] * (valor_constante / 100)
+                
+                st.success(f"Columna '{resultado_nombre}' creada")
+                return df_temp
+        else:
+            resultado_nombre = st.text_input("Nombre resultado", value=f"{columna_a}_{operacion}_{columna_b}", key="calc_resultado_nombre2")
+            
+            if st.button("Calcular", key="btn_calcular2"):
+                df_temp = df.copy()
+                if operacion == "+":
+                    df_temp[resultado_nombre] = df_temp[columna_a] + df_temp[columna_b]
+                elif operacion == "-":
+                    df_temp[resultado_nombre] = df_temp[columna_a] - df_temp[columna_b]
+                elif operacion == "*":
+                    df_temp[resultado_nombre] = df_temp[columna_a] * df_temp[columna_b]
+                elif operacion == "/":
+                    df_temp[resultado_nombre] = df_temp[columna_a] / df_temp[columna_b].replace(0, 1)
+                elif operacion == "%":
+                    df_temp[resultado_nombre] = (df_temp[columna_a] / df_temp[columna_b].replace(0, 1)) * 100
+                
+                st.success(f"Columna '{resultado_nombre}' creada")
+                return df_temp
+        
+        # Mostrar porcentajes
+        st.markdown("---")
+        st.markdown("#### Porcentajes")
+        
+        col_porc1, col_porc2 = st.columns(2)
+        with col_porc1:
+            col_porcentaje = st.selectbox("Columna base", df.columns.tolist(), key="porc_col")
+        with col_porc2:
+            porcentaje_aplicar = st.number_input("Porcentaje %", value=21.0, step=1.0, key="porc_valor")
+        
+        if st.button("Calcular porcentaje", key="btn_porcentaje"):
+            df_temp = df.copy()
+            col_nueva = f"{col_porcentaje}_{porcentaje_aplicar}%"
+            df_temp[col_nueva] = df_temp[col_porcentaje] * (porcentaje_aplicar / 100)
+            st.success(f"Columna '{col_nueva}' creada")
+            return df_temp
+    
+    return df
+
+def mostrar_totales_columnas(df):
+    """Muestra totales, promedios y estadísticas de columnas numéricas"""
+    
+    with st.expander("📊 Estadísticas de columnas"):
+        # Identificar columnas numéricas
+        columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
+        
+        if columnas_numericas:
+            stats_data = []
+            for col in columnas_numericas:
+                stats_data.append({
+                    "Columna": col,
+                    "Suma": df[col].sum(),
+                    "Promedio": df[col].mean(),
+                    "Mínimo": df[col].min(),
+                    "Máximo": df[col].max(),
+                    "Mediana": df[col].median(),
+                })
+            
+            stats_df = pd.DataFrame(stats_data)
+            st.dataframe(stats_df, use_container_width=True)
+            
+            # Opción de crear columna con total
+            if st.button("➕ Agregar fila de totales", key="btn_totales"):
+                df_temp = df.copy()
+                total_row = {}
+                for col in columnas_numericas:
+                    total_row[col] = df_temp[col].sum()
+                for col in df_temp.columns:
+                    if col not in total_row:
+                        total_row[col] = "TOTAL"
+                df_temp.loc[len(df_temp)] = total_row
+                st.success("Fila de totales agregada")
+                return df_temp
+        else:
+            st.info("No hay columnas numéricas para mostrar estadísticas")
+    
+    return df
