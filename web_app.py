@@ -1,4 +1,4 @@
-# web_app.py - Versión ACTUALIZADA con formato profesional
+# web_app.py - VERSIÓN CORREGIDA (creación de proyectos funcional)
 
 import streamlit as st
 import pandas as pd
@@ -25,12 +25,10 @@ st.markdown("""
         background-color: #0e1117;
     }
     
-    /* Fondo del contenido principal */
     .main > div {
         background-color: #0e1117;
     }
     
-    /* Títulos principales modo oscuro */
     .main-header {
         font-size: 24px;
         font-weight: 600;
@@ -41,7 +39,6 @@ st.markdown("""
         font-family: 'Segoe UI', 'Roboto', sans-serif;
     }
     
-    /* Títulos de sección modo oscuro */
     .section-header {
         font-size: 18px;
         font-weight: 500;
@@ -52,7 +49,6 @@ st.markdown("""
         border-left: 3px solid #4299e1;
     }
     
-    /* Tarjetas de métricas modo oscuro */
     .metric-card {
         background-color: #1a1e2e;
         border-radius: 8px;
@@ -75,7 +71,6 @@ st.markdown("""
         margin-top: 5px;
     }
     
-    /* Botones modo oscuro */
     .stButton button {
         background-color: #2d3748;
         color: #ffffff;
@@ -90,25 +85,21 @@ st.markdown("""
         border-color: #718096;
     }
     
-    /* Sidebar modo oscuro */
     [data-testid="stSidebar"] {
         background-color: #0d1117;
         border-right: 1px solid #2d3748;
     }
     
-    /* Texto del sidebar */
     [data-testid="stSidebar"] .stMarkdown {
         color: #e2e8f0;
     }
     
-    /* Data editor estilo tabla contable modo oscuro */
     [data-testid="stDataFrame"] {
         border: 1px solid #2d3748;
         border-radius: 6px;
         background-color: #1a1e2e;
     }
     
-    /* Inputs modo oscuro */
     .stTextInput input, .stSelectbox select, .stTextArea textarea {
         background-color: #1a1e2e;
         border-color: #2d3748;
@@ -119,13 +110,11 @@ st.markdown("""
         border-color: #4299e1;
     }
     
-    /* Expandadores modo oscuro */
     .streamlit-expanderHeader {
         background-color: #1a1e2e;
         color: #e2e8f0;
     }
     
-    /* Métricas modo oscuro */
     [data-testid="stMetricValue"] {
         color: #ffffff;
     }
@@ -134,42 +123,34 @@ st.markdown("""
         color: #a0aec0;
     }
     
-    /* Dataframes y tablas */
     .stDataFrame {
         background-color: #1a1e2e;
     }
     
-    /* Mensajes de info/warning/error */
     .stAlert {
         background-color: #2d3748;
     }
     
-    /* Selectbox */
     .stSelectbox div[data-baseweb="select"] {
         background-color: #1a1e2e;
     }
     
-    /* Ocultar elementos innecesarios */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Divider modo oscuro */
     hr {
         border-color: #2d3748;
     }
     
-    /* Caption y textos pequeños */
     .stCaption, caption {
         color: #a0aec0;
     }
     
-    /* Checkbox modo oscuro */
     .stCheckbox label span {
         color: #e2e8f0;
     }
     
-    /* Tabs modo oscuro */
     .stTabs [data-baseweb="tab-list"] button {
         background-color: #0d1117;
         color: #a0aec0;
@@ -180,7 +161,6 @@ st.markdown("""
         color: #ffffff;
     }
     
-    /* Estilo para botones de confirmación */
     .stCheckbox label {
         color: #e2e8f0;
     }
@@ -245,6 +225,7 @@ with st.sidebar:
                     password_hash = hashlib.sha256(password.encode()).hexdigest()
                     usuario = get_usuarios().find_one({"email": email, "password": password_hash})
                     if usuario:
+                        # Convertir ObjectId a string para serialización
                         usuario["_id"] = str(usuario["_id"])
                         st.session_state.usuario = usuario
                         st.rerun()
@@ -262,20 +243,24 @@ with st.sidebar:
             if st.button("Crear cuenta", use_container_width=True):
                 if reg_pass == reg_pass2 and len(reg_pass) >= 6:
                     password_hash = hashlib.sha256(reg_pass.encode()).hexdigest()
-                    nuevo_usuario = {
-                        "email": reg_email,
-                        "password": password_hash,
-                        "nombre": reg_nombre,
-                        "proyectos": [],
-                        "creado_en": datetime.now()
-                    }
-                    try:
-                        get_usuarios().insert_one(nuevo_usuario)
-                        st.success("Cuenta creada. Ahora inicie sesión.")
-                    except:
-                        st.error("El usuario ya existe")
+                    
+                    # Verificar si el usuario ya existe
+                    if get_usuarios().find_one({"email": reg_email}):
+                        st.error("El email ya está registrado")
+                    else:
+                        nuevo_usuario = {
+                            "email": reg_email,
+                            "password": password_hash,
+                            "nombre": reg_nombre,
+                            "creado_en": datetime.now()
+                        }
+                        try:
+                            get_usuarios().insert_one(nuevo_usuario)
+                            st.success("Cuenta creada exitosamente. Ahora puede iniciar sesión.")
+                        except Exception as e:
+                            st.error(f"Error al crear cuenta: {e}")
                 else:
-                    st.error("Contraseña muy corta o no coinciden")
+                    st.error("Las contraseñas no coinciden o son muy cortas (mínimo 6 caracteres)")
     
     else:
         st.markdown(f"""
@@ -295,33 +280,35 @@ with st.sidebar:
         
         st.markdown('<p style="font-weight: 600; margin-bottom: 10px; color: #e2e8f0;">Proyectos</p>', unsafe_allow_html=True)
         
-        proyectos = list(get_proyectos().find({"email_usuario": st.session_state.usuario["email"]}))
+        # Obtener proyectos del usuario actual
+        email_usuario = st.session_state.usuario["email"]
+        proyectos = list(get_proyectos().find({"email_usuario": email_usuario}))
         
         if proyectos:
             for proy in proyectos:
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    if st.button(f"{proy['nombre']}", key=f"proy_{proy['nombre']}", use_container_width=True):
+                    if st.button(f"{proy['nombre']}", key=f"proy_{proy['nombre']}_{proy['_id']}", use_container_width=True):
                         proy["_id"] = str(proy["_id"])
                         st.session_state.proyecto_actual = proy
                         st.rerun()
                 with col2:
-                    # Botón de eliminar con confirmación
-                    if st.button("⌫", key=f"del_{proy['nombre']}"):
-                        st.session_state[f"confirmar_del_{proy['nombre']}"] = True
+                    if st.button("⌫", key=f"del_{proy['nombre']}_{proy['_id']}"):
+                        st.session_state[f"confirmar_del_{proy['_id']}"] = True
                     
-                    # Mostrar confirmación si está activada
-                    if st.session_state.get(f"confirmar_del_{proy['nombre']}", False):
+                    if st.session_state.get(f"confirmar_del_{proy['_id']}", False):
                         st.caption("¿Eliminar?")
                         col_confirm, col_cancel = st.columns(2)
                         with col_confirm:
-                            if st.button("✓", key=f"confirm_{proy['nombre']}"):
+                            if st.button("✓", key=f"confirm_{proy['_id']}"):
                                 get_proyectos().delete_one({"_id": proy["_id"]})
-                                st.session_state[f"confirmar_del_{proy['nombre']}"] = False
+                                st.session_state[f"confirmar_del_{proy['_id']}"] = False
+                                if st.session_state.proyecto_actual and st.session_state.proyecto_actual.get("_id") == str(proy["_id"]):
+                                    st.session_state.proyecto_actual = None
                                 st.rerun()
                         with col_cancel:
-                            if st.button("✗", key=f"cancel_{proy['nombre']}"):
-                                st.session_state[f"confirmar_del_{proy['nombre']}"] = False
+                            if st.button("✗", key=f"cancel_{proy['_id']}"):
+                                st.session_state[f"confirmar_del_{proy['_id']}"] = False
                                 st.rerun()
         else:
             st.caption("No hay proyectos. Cree uno nuevo.")
@@ -329,30 +316,48 @@ with st.sidebar:
         st.divider()
         
         st.markdown('<p style="font-weight: 600; margin-bottom: 10px; color: #e2e8f0;">Nuevo proyecto</p>', unsafe_allow_html=True)
-        nuevo_nombre = st.text_input("Nombre", key="nuevo_nombre", placeholder="Ej: Cliente ABC")
+        nuevo_nombre = st.text_input("Nombre del proyecto", key="nuevo_nombre", placeholder="Ej: Cliente ABC")
         nuevo_tipo = st.selectbox("Plantilla", ["Libro Diario", "Balanza de Comprobación", "Cuentas T"], key="nuevo_tipo")
         
-        if st.button("Crear proyecto", use_container_width=True):
+        if st.button("Crear proyecto", use_container_width=True, type="primary"):
             if nuevo_nombre:
-                columnas_tipo = {
-                    "Libro Diario": ["Fecha", "Descripción", "Cuenta", "Debe", "Haber", "IVA %"],
-                    "Balanza de Comprobación": ["Código", "Cuenta", "S. Inicial", "Cargos", "Abonos", "Saldo Final"],
-                    "Cuentas T": ["Fecha", "Concepto", "Referencia", "Debe", "Haber", "Saldo"]
-                }
-                
-                nuevo_proyecto = {
+                # Verificar si ya existe un proyecto con ese nombre para este usuario
+                existe = get_proyectos().find_one({
                     "nombre": nuevo_nombre,
-                    "tipo": nuevo_tipo,
-                    "datos": [],
-                    "columnas": columnas_tipo[nuevo_tipo],
-                    "email_usuario": st.session_state.usuario["email"],
-                    "creado_en": datetime.now()
-                }
-                try:
-                    get_proyectos().insert_one(nuevo_proyecto)
-                    st.rerun()
-                except:
-                    st.error("Error al crear")
+                    "email_usuario": email_usuario
+                })
+                
+                if existe:
+                    st.error(f"Ya existe un proyecto con el nombre '{nuevo_nombre}'")
+                else:
+                    columnas_tipo = {
+                        "Libro Diario": ["Fecha", "Descripción", "Cuenta", "Debe", "Haber", "IVA %"],
+                        "Balanza de Comprobación": ["Código", "Cuenta", "Saldo Inicial", "Cargos", "Abonos", "Saldo Final"],
+                        "Cuentas T": ["Fecha", "Concepto", "Referencia", "Debe", "Haber", "Saldo"]
+                    }
+                    
+                    nuevo_proyecto = {
+                        "nombre": nuevo_nombre,
+                        "tipo": nuevo_tipo,
+                        "datos": [],
+                        "columnas": columnas_tipo[nuevo_tipo],
+                        "email_usuario": email_usuario,
+                        "creado_en": datetime.now(),
+                        "ultima_modificacion": datetime.now()
+                    }
+                    
+                    try:
+                        resultado = get_proyectos().insert_one(nuevo_proyecto)
+                        st.success(f"Proyecto '{nuevo_nombre}' creado exitosamente")
+                        
+                        # Crear el objeto proyecto para abrirlo automáticamente
+                        nuevo_proyecto["_id"] = str(resultado.inserted_id)
+                        st.session_state.proyecto_actual = nuevo_proyecto
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al crear proyecto: {e}")
+            else:
+                st.warning("Ingrese un nombre para el proyecto")
 
 # ========== ÁREA PRINCIPAL ==========
 if st.session_state.proyecto_actual:
@@ -414,14 +419,18 @@ if st.session_state.proyecto_actual:
             st.session_state.confirmar_eliminar = True
         
         if st.session_state.confirmar_eliminar:
-            st.warning("¿Confirmar eliminación permanente?")
+            st.warning("¿Eliminar este proyecto permanentemente?")
             col_conf, col_canc = st.columns(2)
             with col_conf:
                 if st.button("Sí, eliminar", use_container_width=True):
-                    get_proyectos().delete_one({"_id": proyecto["_id"]})
-                    st.session_state.proyecto_actual = None
-                    st.session_state.confirmar_eliminar = False
-                    st.rerun()
+                    try:
+                        get_proyectos().delete_one({"_id": proyecto["_id"]})
+                        st.session_state.proyecto_actual = None
+                        st.session_state.confirmar_eliminar = False
+                        st.success("Proyecto eliminado")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al eliminar: {e}")
             with col_canc:
                 if st.button("Cancelar", use_container_width=True):
                     st.session_state.confirmar_eliminar = False
@@ -433,8 +442,8 @@ if st.session_state.proyecto_actual:
     
     col1, col2, col3, col4 = st.columns(4)
     
-    total_debe = edited_df["Debe"].sum() if "Debe" in edited_df.columns else 0
-    total_haber = edited_df["Haber"].sum() if "Haber" in edited_df.columns else 0
+    total_debe = edited_df["Debe"].sum() if "Debe" in edited_df.columns and len(edited_df) > 0 else 0
+    total_haber = edited_df["Haber"].sum() if "Haber" in edited_df.columns and len(edited_df) > 0 else 0
     diferencia = total_debe - total_haber
     
     with col1:
@@ -527,7 +536,7 @@ if st.session_state.proyecto_actual:
                     st.session_state.fig_actual = fig
                     plt.close()
                     
-                else:  # Dona
+                else:
                     if "Cuenta" in df_graf.columns:
                         cuentas_agrupadas = df_graf.groupby("Cuenta")["Debe"].sum().sort_values(ascending=False).head(6)
                         
@@ -566,7 +575,7 @@ if st.session_state.proyecto_actual:
                             key="download_png"
                         )
                     else:
-                        st.warning("Seleccione una gráfica de tipo Pastel o Dona")
+                        st.warning("Seleccione una gráfica de tipo Pastel o Dona para exportar")
                 
                 st.markdown("##### Resumen estadístico")
                 if len(edited_df) > 0:
