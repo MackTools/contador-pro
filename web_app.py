@@ -721,7 +721,35 @@ if st.session_state.proyecto_actual:
             "IVA %": st.column_config.NumberColumn("IVA %", format="%.2f%%"),
             "Fecha": st.column_config.Column("Fecha")
         }
+        st.markdown("---")
+        st.markdown('<div class="section-header"> Herramientas de cálculo</div>', unsafe_allow_html=True)
+
+        col_calc1, col_calc2, col_calc3, col_calc4 = st.columns(4)
+
+        with col_calc1:
+            if st.button("Nueva columna fórmula", use_container_width=True):
+                df = mostrar_gestor_formulas(edited_df)
+                edited_df = df
+
+        with col_calc2:
+            if st.button("Calculadora rápida", use_container_width=True):
+                df = mostrar_calculadora_rapida(edited_df)
+                edited_df = df
+
+        with col_calc3:
+            if st.button("Ver estadísticas", use_container_width=True):
+                df = mostrar_totales_columnas(edited_df)
+                edited_df = df
+
+        with col_calc4:
+            if st.button("Agregar columna vacía", use_container_width=True):
+                nueva_col = st.text_input("Nombre nueva columna", key="temp_new_col")
+                if nueva_col:
+                    edited_df[nueva_col] = ""
+                    st.success(f"Columna '{nueva_col}' agregada")
+                    st.rerun()
     )
+
     
     # ========== BOTONES DE ACCIÓN CORREGIDOS ==========
     col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 2])
