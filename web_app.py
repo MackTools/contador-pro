@@ -262,7 +262,7 @@ DB_NAME = st.secrets["DB_NAME"]
 def get_desktop_app_download_link():
     """Genera enlace de descarga directa del .exe"""
     # El archivo debe estar en la raíz del repositorio
-    exe_path = "ContadorPro.exe"  # Cambia por el nombre exacto
+    exe_path = "contaduria.exe"  # Cambia por el nombre exacto
     
     # Verificar si el archivo existe en el servidor
     if os.path.exists(exe_path):
