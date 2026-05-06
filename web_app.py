@@ -259,6 +259,20 @@ with top_bar_col2:
 MONGO_URI = st.secrets["MONGO_URI"]
 DB_NAME = st.secrets["DB_NAME"]
 
+def get_desktop_app_download_link():
+    """Genera enlace de descarga directa del .exe"""
+    # El archivo debe estar en la raíz del repositorio
+    exe_path = "ContadorPro.exe"  # Cambia por el nombre exacto
+    
+    # Verificar si el archivo existe en el servidor
+    if os.path.exists(exe_path):
+        with open(exe_path, "rb") as f:
+            data = f.read()
+        b64 = base64.b64encode(data).decode()
+        # Enlace directo con data URI
+        return f'data:application/octet-stream;base64,{b64}'
+    return None
+
 @st.cache_resource
 def init_connection():
     try:
