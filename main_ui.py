@@ -1,4 +1,4 @@
-# main_ui.py - VERSIÓN MEJORADA CON FUNCIONALIDADES DE WEB
+# main_ui.py - VERSIÓN CORREGIDA (Escritorio)
 
 import customtkinter as ctk
 from tkinter import messagebox, filedialog, Toplevel, simpledialog
@@ -18,37 +18,46 @@ class AppContable(ctk.CTk):
         super().__init__()
         DBManager.inicializar()
         self.cloud = CloudManager()
-        self.cloud.crear_sesion()
+        
+        # CORRECCIÓN 4: Sesión persistente
+        self.sesion_activa = False
+        self.usuario_actual = None
         
         self.title("Contaduria - Sistema de contabilidad v3.0")
         self.geometry("1400x900")
         self.cambios_pendientes = False
-
+        
+        # Ocultar ventana principal hasta login
+        self.withdraw()
+        
+        # Mostrar login primero
+        self.mostrar_login()
+        
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
-
+        
         # Sidebar
         self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         
         self.logo_label = ctk.CTkLabel(self.sidebar, text="CONTADURIA", font=("Roboto", 22, "bold"))
         self.logo_label.pack(pady=30, padx=20)
-
+        
         self.btn_nuevo = ctk.CTkButton(self.sidebar, text="Nuevo Cliente", 
                                      command=self.abrir_ventana_nuevo,
                                      fg_color="#27ae60")
         self.btn_nuevo.pack(pady=10, padx=20, fill="x")
-
+        
         self.btn_import_global = ctk.CTkButton(self.sidebar, text="Importar Excel/CSV", 
                                              command=self.importar_archivo_general,
                                              fg_color="#5d6d7e")
         self.btn_import_global.pack(pady=10, padx=20, fill="x")
-
+        
         self.btn_cloud = ctk.CTkButton(self.sidebar, text="Sincronizar Nube", 
                              command=self.sincronizar_nube,
                              fg_color="#3498db")
         self.btn_cloud.pack(pady=10, padx=20, fill="x")
-
+        
         self.btn_reportes = ctk.CTkButton(
             self.sidebar,
             text="Generar Reportes",
@@ -56,38 +65,38 @@ class AppContable(ctk.CTk):
             fg_color="#8e44ad"
         )
         self.btn_reportes.pack(pady=10, padx=20, fill="x")
-
+        
         self.status_bar = ctk.CTkFrame(self, height=25, fg_color=("gray90", "gray16"))
         self.status_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.status_label = ctk.CTkLabel(self.status_bar, text="Listo", anchor="w")
         self.status_label.pack(side="left", padx=10)
-
+        
         self.switch_tema = ctk.CTkSwitch(self.sidebar, text="Modo Oscuro", command=self.cambiar_tema)
         self.switch_tema.select()
         self.switch_tema.pack(side="bottom", pady=20)
-
+        
         # Panel principal
         self.main_panel = ctk.CTkFrame(self, fg_color="transparent")
         self.main_panel.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.main_panel.grid_columnconfigure(0, weight=1)
         self.main_panel.grid_rowconfigure(0, weight=1)
-
+        
         self.tabview = ctk.CTkTabview(self.main_panel)
         self.tabview.grid(row=0, column=0, sticky="nsew")
-
-        self.cargar_proyectos_existentes()
+        
         self.after(0, lambda: self.state('zoomed'))
         self.protocol("WM_DELETE_WINDOW", self.confirmar_salida)
-
+    
     def mostrar_login(self):
-        """Ventana de inicio de sesión (mantener igual)"""
-        self.withdraw()
-        
+        """Ventana de inicio de sesión CORREGIDA - No se cierra completamente"""
         login_win = ctk.CTkToplevel()
         login_win.title("Contaduria - Iniciar Sesión")
         login_win.geometry("450x550")
         login_win.attributes("-topmost", True)
         login_win.grab_set()
+        
+        # Referencia para poder cerrar después
+        self.login_ventana = login_win
         
         login_win.update_idletasks()
         x = (login_win.winfo_screenwidth() // 2) - 225
@@ -131,6 +140,8 @@ class AppContable(ctk.CTk):
             
             success, resultado = self.cloud.login(email, password)
             if success:
+                self.sesion_activa = True
+                self.usuario_actual = email
                 login_win.destroy()
                 self.deiconify()
                 self.status_label.configure(text=f"Bienvenido, {resultado.get('nombre', email)}")
@@ -193,10 +204,19 @@ class AppContable(ctk.CTk):
         ctk.CTkButton(tab_registro, text="CREAR CUENTA", command=do_registro,
                     fg_color="#3498db", height=40).pack(pady=20)
         
+        # CORRECCIÓN: Opción para trabajar offline
+        def trabajar_offline():
+            login_win.destroy()
+            self.sesion_activa = False
+            self.deiconify()
+            self.status_label.configure(text="Modo offline - Los datos no se sincronizarán")
+            self.btn_cloud.configure(state="disabled", text="Modo Offline")
+            self.cargar_proyectos_existentes()
+        
         ctk.CTkButton(main_frame, text="Trabajar sin conexión", 
-                    command=lambda: [login_win.destroy(), self.deiconify()],
+                    command=trabajar_offline,
                     fg_color="transparent", hover_color="#555").pack(pady=10)
-
+    
     def construir_interfaz_pestana(self, tab, nombre, carga_inicial=False, tipo_plantilla="Libro Diario"):
         """Construye la pestaña con la tabla mejorada"""
         tab.grid_columnconfigure(0, weight=1)
@@ -254,7 +274,8 @@ class AppContable(ctk.CTk):
         btn_remove_last.configure(command=tabla.eliminar_ultima_fila)
         btn_formula.configure(command=lambda: self.abrir_gestor_formulas(tabla))
         btn_calculadora.configure(command=lambda: self.abrir_calculadora_rapida(tabla))
-        btn_estadisticas.configure(command=lambda: self.mostrar_estadisticas(tabla))
+        # CORRECCIÓN 2: Pasar la referencia correcta de tabla
+        btn_estadisticas.configure(command=lambda t=tabla: self.mostrar_estadisticas(t))
         btn_graficas.configure(command=lambda: self.abrir_graficas(tabla, nombre))
         btn_guardar.configure(command=lambda: self.accion_guardar(tabla, nombre))
         export_menu.configure(command=lambda v: self.ejecutar_exportacion(v, tabla, nombre))
@@ -308,7 +329,7 @@ class AppContable(ctk.CTk):
                     for idx, valor in enumerate(resultado):
                         if idx < len(tabla.filas):
                             tabla.filas[idx][-1].delete(0, "end")
-                            tabla.filas[idx][-1].insert(0, str(valor))
+                            tabla.filas[idx][-1].insert(0, str(valor) if not isinstance(valor, (int, float)) else f"{valor:,.2f}")
                     messagebox.showinfo("Éxito", f"Columna '{nombre}' creada")
                     dialog.destroy()
                 else:
@@ -375,93 +396,121 @@ class AppContable(ctk.CTk):
             op = operacion.get()
             col_b_val = col_b.get()
             
-            if col_b_val == "(Constante)":
-                try:
-                    constante = float(entry_const.get())
-                except:
-                    constante = 0
+            try:
+                if col_b_val == "(Constante)":
+                    constante = float(entry_const.get() or 0)
+                    if op == "+":
+                        resultado = df[col_a_val] + constante
+                    elif op == "-":
+                        resultado = df[col_a_val] - constante
+                    elif op == "*":
+                        resultado = df[col_a_val] * constante
+                    elif op == "/":
+                        resultado = df[col_a_val] / constante if constante != 0 else 0
+                    elif op == "%":
+                        resultado = df[col_a_val] * (constante / 100)
+                else:
+                    if op == "+":
+                        resultado = df[col_a_val] + df[col_b_val]
+                    elif op == "-":
+                        resultado = df[col_a_val] - df[col_b_val]
+                    elif op == "*":
+                        resultado = df[col_a_val] * df[col_b_val]
+                    elif op == "/":
+                        resultado = df[col_a_val] / df[col_b_val].replace(0, 1)
+                    elif op == "%":
+                        resultado = (df[col_a_val] / df[col_b_val].replace(0, 1)) * 100
                 
-                if op == "+":
-                    resultado = df[col_a_val] + constante
-                elif op == "-":
-                    resultado = df[col_a_val] - constante
-                elif op == "*":
-                    resultado = df[col_a_val] * constante
-                elif op == "/":
-                    resultado = df[col_a_val] / constante if constante != 0 else 0
-                elif op == "%":
-                    resultado = df[col_a_val] * (constante / 100)
-            else:
-                if op == "+":
-                    resultado = df[col_a_val] + df[col_b_val]
-                elif op == "-":
-                    resultado = df[col_a_val] - df[col_b_val]
-                elif op == "*":
-                    resultado = df[col_a_val] * df[col_b_val]
-                elif op == "/":
-                    resultado = df[col_a_val] / df[col_b_val].replace(0, 1)
-                elif op == "%":
-                    resultado = (df[col_a_val] / df[col_b_val].replace(0, 1)) * 100
-            
-            # Agregar columna
-            tabla.agregar_columna(nombre)
-            for idx, valor in enumerate(resultado):
-                if idx < len(tabla.filas):
-                    tabla.filas[idx][-1].delete(0, "end")
-                    tabla.filas[idx][-1].insert(0, f"{valor:,.2f}")
-            
-            messagebox.showinfo("Éxito", f"Columna '{nombre}' creada")
-            dialog.destroy()
+                # Agregar columna
+                tabla.agregar_columna(nombre)
+                for idx, valor in enumerate(resultado):
+                    if idx < len(tabla.filas):
+                        tabla.filas[idx][-1].delete(0, "end")
+                        tabla.filas[idx][-1].insert(0, f"{float(valor):,.2f}")
+                
+                messagebox.showinfo("Éxito", f"Columna '{nombre}' creada")
+                dialog.destroy()
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al calcular: {str(e)}")
         
         ctk.CTkButton(dialog, text="Calcular", command=calcular, fg_color="#27ae60").pack(pady=20)
     
+    # CORRECCIÓN 2: Mostrar estadísticas corregido
     def mostrar_estadisticas(self, tabla):
-        """Muestra estadísticas de las columnas numéricas"""
-        df = tabla.obtener_dataframe()
-        columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
-        
-        if not columnas_numericas:
-            messagebox.showinfo("Info", "No hay columnas numéricas para analizar")
-            return
-        
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Estadísticas de Columnas")
-        dialog.geometry("600x400")
-        dialog.attributes("-topmost", True)
-        
-        # Crear frame con scroll
-        scroll_frame = ctk.CTkScrollableFrame(dialog)
-        scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        for col in columnas_numericas:
-            frame = ctk.CTkFrame(scroll_frame)
-            frame.pack(fill="x", pady=5)
+        """Muestra estadísticas de las columnas numéricas - CORREGIDO"""
+        try:
+            # Verificar que tabla existe
+            if not tabla:
+                messagebox.showerror("Error", "No se encontró la tabla activa")
+                return
             
-            ctk.CTkLabel(frame, text=col, font=("Roboto", 12, "bold")).pack(side="left", padx=10)
+            df = tabla.obtener_dataframe()
             
-            stats = [
-                f"Suma: ${df[col].sum():,.2f}",
-                f"Promedio: ${df[col].mean():,.2f}",
-                f"Mín: ${df[col].min():,.2f}",
-                f"Máx: ${df[col].max():,.2f}"
-            ]
+            if df.empty or len(df) == 0:
+                messagebox.showinfo("Info", "No hay datos para analizar")
+                return
             
-            for stat in stats:
-                ctk.CTkLabel(frame, text=stat, font=("Roboto", 10)).pack(side="left", padx=10)
-        
-        # Botón para agregar fila de totales
-        def agregar_totales():
-            total_row = {}
+            columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
+            
+            if not columnas_numericas:
+                # Intentar convertir columnas que parecen numéricas
+                for col in df.columns:
+                    try:
+                        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
+                        if df[col].notna().any():
+                            columnas_numericas.append(col)
+                    except:
+                        pass
+            
+            if not columnas_numericas:
+                messagebox.showinfo("Info", "No hay columnas numéricas para analizar")
+                return
+            
+            dialog = ctk.CTkToplevel(self)
+            dialog.title("Estadísticas de Columnas")
+            dialog.geometry("700x500")
+            dialog.attributes("-topmost", True)
+            
+            # Crear frame con scroll
+            scroll_frame = ctk.CTkScrollableFrame(dialog)
+            scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+            
             for col in columnas_numericas:
-                total_row[col] = df[col].sum()
-            for col in df.columns:
-                if col not in total_row:
-                    total_row[col] = "TOTAL"
-            tabla.añadir_fila_con_datos([str(total_row.get(c, "")) for c in tabla.encabezados])
-            messagebox.showinfo("Éxito", "Fila de totales agregada")
-            dialog.destroy()
-        
-        ctk.CTkButton(dialog, text="Agregar fila de totales", command=agregar_totales, fg_color="#27ae60").pack(pady=10)
+                frame = ctk.CTkFrame(scroll_frame)
+                frame.pack(fill="x", pady=5)
+                
+                # Limpiar valores NaN
+                valores_limpios = df[col].fillna(0)
+                
+                ctk.CTkLabel(frame, text=col, font=("Roboto", 12, "bold")).pack(side="left", padx=10)
+                
+                stats = [
+                    f"Suma: ${valores_limpios.sum():,.2f}",
+                    f"Promedio: ${valores_limpios.mean():,.2f}",
+                    f"Mín: ${valores_limpios.min():,.2f}",
+                    f"Máx: ${valores_limpios.max():,.2f}",
+                    f"Registros: {len(valores_limpios)}"
+                ]
+                
+                for stat in stats:
+                    ctk.CTkLabel(frame, text=stat, font=("Roboto", 10)).pack(side="left", padx=10)
+            
+            # Botón para agregar fila de totales
+            def agregar_totales():
+                total_row = {}
+                for col in columnas_numericas:
+                    total_row[col] = df[col].fillna(0).sum()
+                for col in df.columns:
+                    if col not in total_row:
+                        total_row[col] = "TOTAL"
+                tabla.añadir_fila_con_datos([str(total_row.get(c, "")) for c in tabla.encabezados])
+                messagebox.showinfo("Éxito", "Fila de totales agregada")
+                dialog.destroy()
+            
+            ctk.CTkButton(dialog, text="Agregar fila de totales", command=agregar_totales, fg_color="#27ae60").pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al mostrar estadísticas: {str(e)}")
     
     def abrir_graficas(self, tabla, nombre_proyecto):
         """Abre la ventana de gráficas mejorada"""
@@ -480,10 +529,17 @@ class AppContable(ctk.CTk):
         
         tab = self.tabview.tab(nombre_proyecto)
         tabla = None
+        # Buscar la tabla en los widgets de la pestaña
         for widget in tab.winfo_children():
             if isinstance(widget, TablaContableMejorada):
                 tabla = widget
                 break
+            # Buscar también dentro de frames anidados
+            if hasattr(widget, 'winfo_children'):
+                for child in widget.winfo_children():
+                    if isinstance(child, TablaContableMejorada):
+                        tabla = child
+                        break
         
         if not tabla:
             messagebox.showwarning("Aviso", "No hay datos para generar reporte")
@@ -491,9 +547,13 @@ class AppContable(ctk.CTk):
         
         df = tabla.obtener_dataframe()
         
+        if df.empty:
+            messagebox.showwarning("Aviso", "No hay datos en la tabla")
+            return
+        
         # Palabras clave para clasificación
-        palabras_activo = ['activo', 'caja', 'banco', 'efectivo', 'inventario', 'cliente', 'cuenta por cobrar']
-        palabras_pasivo = ['pasivo', 'proveedor', 'cuenta por pagar', 'acreedor', 'préstamo', 'deuda']
+        palabras_activo = ['activo', 'caja', 'banco', 'efectivo', 'inventario', 'cliente', 'cuenta por cobrar', 'cuenta x cobrar', 'debe']
+        palabras_pasivo = ['pasivo', 'proveedor', 'cuenta por pagar', 'acreedor', 'préstamo', 'deuda', 'haber']
         palabras_capital = ['capital', 'patrimonio', 'aporte', 'inversión']
         
         activos = 0
@@ -527,6 +587,7 @@ class AppContable(ctk.CTk):
         resultado_texto = f"""
         === BALANCE GENERAL ===
         Proyecto: {nombre_proyecto}
+        Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
         
         ACTIVOS: ${activos:,.2f}
         PASIVOS: ${pasivos:,.2f}
@@ -561,6 +622,11 @@ class AppContable(ctk.CTk):
             if isinstance(widget, TablaContableMejorada):
                 tabla = widget
                 break
+            if hasattr(widget, 'winfo_children'):
+                for child in widget.winfo_children():
+                    if isinstance(child, TablaContableMejorada):
+                        tabla = child
+                        break
         
         if not tabla:
             messagebox.showwarning("Aviso", "No hay datos para generar reporte")
@@ -568,8 +634,12 @@ class AppContable(ctk.CTk):
         
         df = tabla.obtener_dataframe()
         
-        palabras_ingreso = ['ingreso', 'venta', 'servicio', 'honorarios']
-        palabras_gasto = ['gasto', 'costo', 'compra', 'sueldo', 'alquiler']
+        if df.empty:
+            messagebox.showwarning("Aviso", "No hay datos en la tabla")
+            return
+        
+        palabras_ingreso = ['ingreso', 'venta', 'servicio', 'honorarios', 'ingresos']
+        palabras_gasto = ['gasto', 'costo', 'compra', 'sueldo', 'alquiler', 'gastos']
         
         ingresos = 0
         gastos = 0
@@ -581,15 +651,16 @@ class AppContable(ctk.CTk):
                 haber = row.get("Haber", 0) or 0
                 
                 if any(p in desc for p in palabras_ingreso):
-                    ingresos += haber
+                    ingresos += haber if haber > 0 else debe
                 elif any(p in desc for p in palabras_gasto):
-                    gastos += debe
+                    gastos += debe if debe > 0 else haber
         
         utilidad = ingresos - gastos
         
         resultado_texto = f"""
         === ESTADO DE RESULTADOS ===
         Proyecto: {nombre_proyecto}
+        Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
         
         INGRESOS: ${ingresos:,.2f}
         GASTOS: ${gastos:,.2f}
@@ -638,7 +709,6 @@ class AppContable(ctk.CTk):
                                 fg_color="transparent", hover_color="#e74c3c")
         btn_cancel.pack(pady=10)
     
-    # Los demás métodos (añadir_pestaña, accion_guardar, etc.) se mantienen igual
     def añadir_pestaña(self, nombre, tipo="Libro Diario", carga_inicial=False):
         if nombre in self.tabview._tab_dict:
             messagebox.showwarning("Aviso", "Este cliente ya está abierto.")
@@ -684,28 +754,56 @@ class AppContable(ctk.CTk):
     def ejecutar_exportacion(self, formato, tabla, nombre):
         GestionArchivosMejorado.exportar(tabla.obtener_datos(), nombre, formato)
     
+    # CORRECCIÓN 4: Sincronización mejorada
     def sincronizar_nube(self):
+        """Sincroniza con la nube - CORREGIDO"""
+        if not self.sesion_activa:
+            respuesta = messagebox.askyesno("Iniciar sesión", 
+                                           "Para sincronizar necesitas iniciar sesión.\n¿Deseas iniciar sesión ahora?")
+            if respuesta:
+                self.mostrar_login()
+            return
+        
+        # Crear ventana de progreso
         progress = ctk.CTkToplevel(self)
         progress.title("Sincronizando")
-        progress.geometry("300x100")
+        progress.geometry("350x150")
         progress.attributes('-topmost', True)
+        progress.grab_set()
         
-        ctk.CTkLabel(progress, text="Subiendo proyectos a la nube...").pack(pady=20)
+        ctk.CTkLabel(progress, text="Guardando proyectos locales...").pack(pady=15)
         bar = ctk.CTkProgressBar(progress, mode="indeterminate")
         bar.pack(pady=10, padx=20, fill="x")
         bar.start()
         
-        for nombre in self.tabview._tab_dict.keys():
-            tab = self.tabview.tab(nombre)
-            for widget in tab.winfo_children():
-                if isinstance(widget, TablaContableMejorada):
-                    datos = widget.obtener_datos()
-                    columnas = widget.encabezados
-                    self.cloud.guardar_proyecto(nombre, widget.tipo_actual, datos, columnas, lambda s, m: None)
-                    break
+        def sync_thread():
+            try:
+                # Primero guardar todos los proyectos localmente
+                for nombre in list(self.tabview._tab_dict.keys()):
+                    tab = self.tabview.tab(nombre)
+                    for widget in tab.winfo_children():
+                        if isinstance(widget, TablaContableMejorada):
+                            datos = widget.obtener_datos()
+                            DBManager.guardar_proyecto(nombre, datos, widget.tipo_actual)
+                            # Subir a la nube
+                            self.cloud.guardar_proyecto(nombre, widget.tipo_actual, datos, widget.encabezados)
+                            break
+                
+                self.after(0, lambda: self.sync_complete(progress, True, "Proyectos sincronizados con la nube"))
+            except Exception as e:
+                self.after(0, lambda: self.sync_complete(progress, False, f"Error: {str(e)}"))
         
-        self.after(2000, lambda: [bar.stop(), progress.destroy(), 
-                                messagebox.showinfo("Sincronización", "Proyectos sincronizados con la nube")])
+        import threading
+        threading.Thread(target=sync_thread, daemon=True).start()
+    
+    def sync_complete(self, progress, success, message):
+        """Callback de sincronización completa"""
+        progress.destroy()
+        if success:
+            messagebox.showinfo("Sincronización", message)
+            self.status_label.configure(text=message)
+        else:
+            messagebox.showerror("Error", message)
     
     def cambiar_tema(self):
         mode = "dark" if self.switch_tema.get() == 1 else "light"
@@ -714,6 +812,8 @@ class AppContable(ctk.CTk):
     def accion_eliminar(self, nombre):
         if messagebox.askyesno("Confirmar", f"¿Eliminar permanentemente el proyecto '{nombre}'?"):
             DBManager.eliminar_proyecto(nombre)
+            if self.sesion_activa:
+                self.cloud.eliminar_proyecto(nombre)
             self.tabview.delete(nombre)
             messagebox.showinfo("Eliminado", f"Proyecto '{nombre}' eliminado.")
     
@@ -725,7 +825,13 @@ class AppContable(ctk.CTk):
         if self.cambios_pendientes:
             msg = messagebox.askyesnocancel("Salir", "¿Deseas guardar los cambios antes de salir?")
             if msg is True:
-                messagebox.showinfo("Guardado", "Todo se ha guardado.")
+                # Guardar todos los proyectos abiertos
+                for nombre in self.tabview._tab_dict.keys():
+                    tab = self.tabview.tab(nombre)
+                    for widget in tab.winfo_children():
+                        if isinstance(widget, TablaContableMejorada):
+                            self.accion_guardar(widget, nombre)
+                            break
                 self.destroy()
             elif msg is False:
                 self.destroy()
