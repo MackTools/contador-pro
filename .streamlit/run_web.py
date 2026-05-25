@@ -1,29 +1,26 @@
-# run_web.py - Script para ejecutar la aplicación web
-
-import subprocess
-import sys
+# run_web.py - Script para ejecutar la versión web
 import os
+import sys
 
 def main():
-    """Ejecuta la aplicación Streamlit"""
-    print("🚀 Iniciando Contaduría Web...")
-    print("📱 La aplicación se abrirá en tu navegador")
-    print("⚠️  Presiona Ctrl+C para detener el servidor\n")
+    print("=" * 50)
+    print("📊 Contaduría - Versión Web")
+    print("=" * 50)
+    print()
+    print("Iniciando servidor web...")
+    print()
+    print("🌐 La aplicación estará disponible en:")
+    print("   Local: http://localhost:8501")
+    print("   Red:   http://192.168.x.x:8501")
+    print()
+    print("📌 Credenciales de prueba:")
+    print("   Usuario: demo@contaduria.com")
+    print("   Contraseña: admin123")
+    print()
+    print("Presiona Ctrl+C para detener el servidor")
+    print("=" * 50)
     
-    # Obtener la ruta del archivo web_app.py
-    web_app_path = os.path.join(os.path.dirname(__file__), "web_app.py")
-    
-    # Ejecutar streamlit
-    cmd = [sys.executable, "-m", "streamlit", "run", web_app_path, "--server.port=8501", "--server.address=localhost"]
-    
-    try:
-        subprocess.run(cmd)
-    except KeyboardInterrupt:
-        print("\n👋 Servidor detenido")
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        print("\n💡 Asegúrate de tener instalado streamlit:")
-        print("   pip install streamlit")
+    os.system(f"{sys.executable} -m streamlit run web_app.py --server.port 8501 --server.address 0.0.0.0")
 
 if __name__ == "__main__":
     main()
