@@ -6,18 +6,15 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 import os
-import base64
 import random
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from io import BytesIO
 
 # ========== CONFIGURACION ==========
 st.set_page_config(
     page_title="Contaduria",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # ========== INICIALIZAR ESTADO ==========
@@ -30,7 +27,6 @@ if "email_usuario" not in st.session_state:
 if "proyecto_actual" not in st.session_state:
     st.session_state.proyecto_actual = ""
 if "proyectos" not in st.session_state:
-    # Datos demo iniciales
     df = pd.DataFrame({
         "Fecha": ["2024-01-15", "2024-01-20", "2024-02-01", "2024-02-15", "2024-03-01"],
         "Descripcion": ["Venta servicios", "Compra materiales", "Pago nomina", "Venta productos", "Alquiler oficina"],
@@ -56,100 +52,141 @@ if "codigos_recuperacion" not in st.session_state:
 # ========== ESTILO CSS ==========
 st.markdown("""
 <style>
-    /* Boton descarga flotante */
     .btn-descarga {
         position: fixed;
-        top: 12px;
-        right: 20px;
+        top: 14px;
+        right: 24px;
         z-index: 999999;
         background: #2563eb;
         color: white !important;
-        padding: 8px 18px;
-        border-radius: 6px;
+        padding: 9px 20px;
+        border-radius: 8px;
         text-decoration: none;
         font-size: 13px;
         font-weight: 500;
-        border: none;
-        cursor: pointer;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        transition: all 0.2s;
     }
     .btn-descarga:hover {
         background: #1d4ed8;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        transform: translateY(-1px);
     }
     
-    /* Tablas mas limpias */
+    /* === SIDEBAR - NO COLAPSABLE === */
+    [data-testid="stSidebar"] {
+        min-width: 270px !important;
+        max-width: 270px !important;
+    }
+    
+    /* Ocultar TODOS los botones de colapso */
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="collapsedControl"],
+    button[kind="header"],
+    [data-testid="stSidebarNav"] button {
+        display: none !important;
+    }
+    
+    /* === TABLAS === */
     [data-testid="stDataFrame"] {
         border: 1px solid #e5e7eb;
-        border-radius: 6px;
+        border-radius: 8px;
         overflow: hidden;
     }
-    
     [data-testid="stDataFrame"] th {
         background-color: #f8fafc !important;
         color: #334155 !important;
         font-weight: 600 !important;
         font-size: 13px !important;
+        padding: 10px 14px !important;
+        border-bottom: 2px solid #e5e7eb !important;
+    }
+    [data-testid="stDataFrame"] td {
+        padding: 8px 14px !important;
+        font-size: 13px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    [data-testid="stDataFrame"] tr:hover td {
+        background-color: #f8fafc !important;
+    }
+    
+    /* === INPUTS === */
+    input, select, textarea {
+        border-radius: 6px !important;
+        border: 1px solid #d1d5db !important;
         padding: 8px 12px !important;
     }
-    
-    [data-testid="stDataFrame"] td {
-        padding: 6px 12px !important;
-        font-size: 13px !important;
+    input:focus, select:focus, textarea:focus {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
     }
     
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #f8fafc;
-        border-right: 1px solid #e5e7eb;
-    }
-    
-    /* Botones */
+    /* === BOTONES === */
     .stButton > button {
-        border-radius: 5px;
+        border-radius: 6px;
         font-size: 13px;
-        padding: 4px 14px;
+        padding: 6px 16px;
         font-weight: 500;
         border: 1px solid #d1d5db;
         background-color: white;
         color: #374151;
+        transition: all 0.15s;
     }
     .stButton > button:hover {
         background-color: #f3f4f6;
         border-color: #9ca3af;
     }
     
-    /* Ocultar elementos */
+    /* === METRICAS === */
+    [data-testid="stMetric"] {
+        background-color: white;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    /* === EXPANDER === */
+    .streamlit-expanderHeader {
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    
+    /* === OCULTAR === */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Inputs */
-    input, select, textarea {
-        border-radius: 5px !important;
-        border: 1px solid #d1d5db !important;
-    }
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar {width: 6px;}
+    ::-webkit-scrollbar-track {background: transparent;}
+    ::-webkit-scrollbar-thumb {background: #d1d5db; border-radius: 3px;}
     
-    /* Cards */
-    .stMetric {
-        background-color: white;
-        padding: 12px;
-        border-radius: 6px;
-        border: 1px solid #e5e7eb;
-    }
+    /* === PREVENIR COLAPSO CON JS === */
 </style>
+
+<script>
+    // Prevenir que la sidebar se colapse
+    const observer = new MutationObserver(function() {
+        const sidebar = parent.document.querySelector('[data-testid="stSidebar"]');
+        if (sidebar) {
+            sidebar.style.display = 'block';
+            sidebar.style.visibility = 'visible';
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+</script>
 """, unsafe_allow_html=True)
 
-# ========== BOTON DESCARGA FLOTANTE ==========
-exe_path = "dist/contaduria.exe"
-if os.path.exists(exe_path):
-    with open(exe_path, "rb") as f:
-        exe_data = base64.b64encode(f.read()).decode()
-    st.markdown(f"""
-    <a href="data:application/octet-stream;base64,{exe_data}" 
-       download="Contaduria_Setup.exe" 
-       class="btn-descarga">
-       Descargar App Escritorio
-    </a>
-    """, unsafe_allow_html=True)
+# ========== BOTON DESCARGA ==========
+# URL de descarga (cambia esto por tu enlace de Google Drive, Dropbox, etc.)
+URL_DESCARGA_EXE = "https://drive.google.com/uc?export=download&id=TU_ID_DE_ARCHIVO"
+
+st.markdown(f"""
+<a href="{URL_DESCARGA_EXE}" target="_blank" class="btn-descarga">
+    📥 Descargar App Escritorio
+</a>
+""", unsafe_allow_html=True)
 
 # ========== FUNCIONES ==========
 def guardar_proyecto(nombre, df):
@@ -177,30 +214,10 @@ def convertir_numerico(df, col):
         return pd.Series([0] * len(df))
 
 def enviar_email_recuperacion(destinatario, codigo):
-    """Simula envio de email (en produccion usar credenciales reales)"""
     try:
-        remitente = "noreply@contaduria.com"
-        asunto = "Recuperacion de contrasena - Contaduria"
-        
-        mensaje = f"""
-        Hola,
-        
-        Has solicitado recuperar tu contrasena en Contaduria.
-        
-        Tu codigo de verificacion es: {codigo}
-        
-        Ingresa este codigo en la aplicacion para restablecer tu contrasena.
-        
-        Si no solicitaste este cambio, ignora este mensaje.
-        
-        Saludos,
-        Equipo Contaduria
-        """
-        
-        # En desarrollo, solo guardamos el codigo
         st.session_state.codigos_recuperacion[destinatario] = {
             "codigo": codigo,
-            "expiracion": datetime.now().timestamp() + 1800  # 30 minutos
+            "expiracion": datetime.now().timestamp() + 1800
         }
         return True, "Codigo enviado (simulado)"
     except Exception as e:
@@ -210,19 +227,18 @@ def enviar_email_recuperacion(destinatario, codigo):
 def pagina_login():
     st.markdown("<br>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1.8, 1])
+    col1, col2, col3 = st.columns([1, 1.6, 1])
     
     with col2:
         st.markdown("""
         <div style="text-align: center; padding: 10px 0 30px 0;">
             <h1 style="color: #1e293b; margin: 0; font-size: 28px;">Contaduria</h1>
-            <p style="color: #64748b; margin: 5px 0 0 0;">Sistema de gestion contable</p>
+            <p style="color: #64748b; margin: 5px 0 0 0; font-size: 15px;">Sistema de gestion contable</p>
         </div>
         """, unsafe_allow_html=True)
         
         tab1, tab2, tab3 = st.tabs(["Iniciar sesion", "Registrarse", "Recuperar contrasena"])
         
-        # ===== TAB LOGIN =====
         with tab1:
             with st.form("form_login"):
                 email = st.text_input("Correo electronico", placeholder="demo@contaduria.com")
@@ -253,7 +269,6 @@ def pagina_login():
             
             st.caption("Demo: demo@contaduria.com / admin123")
         
-        # ===== TAB REGISTRO =====
         with tab2:
             with st.form("form_registro"):
                 st.markdown("**Crear cuenta gratuita**")
@@ -284,23 +299,22 @@ def pagina_login():
                             "nombre": nombre
                         }
                         st.success("Cuenta creada exitosamente")
-                        st.info("Ahora puede iniciar sesion")
+                        st.info("Ahora puede iniciar sesion desde la pestana 'Iniciar sesion'")
         
-        # ===== TAB RECUPERAR =====
         with tab3:
             st.markdown("**Recuperar contrasena**")
-            st.caption("Ingrese su correo para recibir un codigo de verificacion")
+            st.caption("Ingrese su correo para recibir un codigo")
             
             email_rec = st.text_input("Correo electronico", placeholder="su@correo.com", key="rec_email")
             
-            if st.button("Enviar codigo", use_container_width=True):
+            if st.button("Enviar codigo de verificacion", use_container_width=True):
                 if email_rec and "@" in email_rec:
                     if email_rec in st.session_state.usuarios_registrados:
                         codigo = str(random.randint(100000, 999999))
                         exito, msg = enviar_email_recuperacion(email_rec, codigo)
                         if exito:
                             st.success(f"Codigo enviado a {email_rec}")
-                            st.info(f"Codigo de prueba: {codigo}")
+                            st.info(f"Codigo de verificacion: **{codigo}**")
                             st.session_state.rec_email_temp = email_rec
                         else:
                             st.error(msg)
@@ -309,10 +323,10 @@ def pagina_login():
                 else:
                     st.error("Ingrese un correo valido")
             
-            # Verificar codigo
             if hasattr(st.session_state, 'rec_email_temp'):
-                st.markdown("---")
-                codigo_ingresado = st.text_input("Codigo de verificacion", placeholder="000000")
+                st.divider()
+                st.markdown("**Verificar codigo**")
+                codigo_ingresado = st.text_input("Codigo recibido", placeholder="000000")
                 nueva_pass = st.text_input("Nueva contrasena", type="password", placeholder="Minimo 6 caracteres")
                 
                 if st.button("Cambiar contrasena", use_container_width=True):
@@ -335,19 +349,16 @@ def pagina_login():
 
 # ========== PAGINA PRINCIPAL ==========
 def pagina_app():
-    # Sidebar
     with st.sidebar:
-        # Perfil
         st.markdown(f"""
         <div style="padding: 8px 0;">
-            <strong>{st.session_state.usuario}</strong><br>
+            <strong style="font-size: 15px;">{st.session_state.usuario}</strong><br>
             <small style="color: #64748b;">{st.session_state.email_usuario if st.session_state.email_usuario else 'Modo offline'}</small>
         </div>
         """, unsafe_allow_html=True)
         st.divider()
         
-        # Nuevo proyecto
-        with st.expander("Nuevo proyecto", expanded=False):
+        with st.expander("➕ Nuevo proyecto", expanded=False):
             nombre_nuevo = st.text_input("Nombre", key="new_name", placeholder="Nombre del proyecto")
             tipo = st.selectbox("Plantilla", ["Libro Diario", "Balanza de Comprobacion", "Cuentas T"], key="new_type")
             
@@ -369,8 +380,7 @@ def pagina_app():
                 else:
                     st.error("Ingrese un nombre")
         
-        # Importar
-        with st.expander("Importar Excel", expanded=False):
+        with st.expander("📥 Importar Excel", expanded=False):
             archivo = st.file_uploader("Seleccionar archivo", type=["xlsx", "xls"], key="import_file", label_visibility="collapsed")
             if archivo:
                 try:
@@ -386,25 +396,20 @@ def pagina_app():
                     st.error(f"Error: {e}")
         
         st.divider()
-        
-        # Lista proyectos
-        st.markdown("**Proyectos**")
+        st.markdown("**📁 Proyectos**")
         
         if st.session_state.proyectos:
             for nombre in list(st.session_state.proyectos.keys()):
                 info = st.session_state.proyectos[nombre]
                 n_filas = len(info["datos"])
                 
-                # Fila del proyecto
                 cols = st.columns([5, 1])
                 with cols[0]:
-                    btn_label = f"{nombre} ({n_filas})"
-                    if st.button(btn_label, key=f"proj_{nombre}", use_container_width=True,
-                               help=f"Creado: {info.get('fecha', '')}\nModificado: {info.get('modificado', '')}"):
+                    if st.button(f"{nombre} ({n_filas})", key=f"proj_{nombre}", use_container_width=True):
                         st.session_state.proyecto_actual = nombre
                         st.rerun()
                 with cols[1]:
-                    if st.button("×", key=f"del_{nombre}", help="Eliminar proyecto"):
+                    if st.button("×", key=f"del_{nombre}", help="Eliminar"):
                         if st.session_state.proyecto_actual == nombre:
                             st.session_state.proyecto_actual = ""
                         eliminar_proyecto(nombre)
@@ -425,20 +430,17 @@ def pagina_app():
         df = cargar_proyecto(nombre)
         info = st.session_state.proyectos.get(nombre, {})
         
-        # Encabezado
         st.markdown(f"### {nombre}")
         st.caption(f"Creado: {info.get('fecha', 'N/A')} | Modificado: {info.get('modificado', 'N/A')} | Registros: {len(df)}")
         
-        # Editor de datos
         if not df.empty:
-            # Configurar columnas numericas
             column_config = {}
             for col in df.columns:
                 col_lower = col.lower()
                 if any(x in col_lower for x in ["debe", "haber", "saldo", "monto", "cargos", "abonos"]):
-                    column_config[col] = st.column_config.NumberColumn(col, format="$ %,.2f", help=f"Monto en {col}")
+                    column_config[col] = st.column_config.NumberColumn(col, format="$ %,.2f")
                 elif "fecha" in col_lower:
-                    column_config[col] = st.column_config.TextColumn(col, help="Formato: YYYY-MM-DD")
+                    column_config[col] = st.column_config.TextColumn(col)
             
             edited_df = st.data_editor(
                 df,
@@ -458,18 +460,17 @@ def pagina_app():
         
         st.divider()
         
-        # Barra de herramientas
         c1, c2, c3, c4, c5, c6 = st.columns(6)
         
         with c1:
-            if st.button("+ Agregar fila", use_container_width=True):
+            if st.button("+ Fila", use_container_width=True):
                 nueva = {col: "" for col in edited_df.columns}
                 edited_df = pd.concat([edited_df, pd.DataFrame([nueva])], ignore_index=True)
                 guardar_proyecto(nombre, edited_df)
                 st.rerun()
         
         with c2:
-            if st.button("- Eliminar ultima", use_container_width=True):
+            if st.button("- Ultima", use_container_width=True):
                 if len(edited_df) > 0:
                     edited_df = edited_df.iloc[:-1]
                     guardar_proyecto(nombre, edited_df)
@@ -484,26 +485,21 @@ def pagina_app():
         
         with c4:
             if st.button("Estadisticas", use_container_width=True):
-                st.session_state.mostrar_stats = not st.session_state.get("mostrar_stats", False)
+                st.session_state.show_stats = not st.session_state.get("show_stats", False)
         
         with c5:
             if st.button("Grafica", use_container_width=True):
-                st.session_state.mostrar_grafica = not st.session_state.get("mostrar_grafica", False)
+                st.session_state.show_chart = not st.session_state.get("show_chart", False)
         
         with c6:
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 edited_df.to_excel(writer, sheet_name=nombre, index=False)
-            st.download_button(
-                "Exportar Excel",
-                output.getvalue(),
-                f"{nombre}.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+            st.download_button("Exportar", output.getvalue(), f"{nombre}.xlsx",
+                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                              use_container_width=True)
         
-        # Panel Estadisticas
-        if st.session_state.get("mostrar_stats", False):
+        if st.session_state.get("show_stats", False):
             st.divider()
             st.markdown("#### Estadisticas")
             
@@ -520,58 +516,43 @@ def pagina_app():
                 columnas = st.columns(min(len(cols_num), 3))
                 for i, (col, vals) in enumerate(cols_num):
                     with columnas[i % 3]:
-                        st.metric(
-                            label=col,
-                            value=f"${vals.sum():,.2f}",
-                            delta=f"Prom: ${vals.mean():,.2f}"
-                        )
+                        st.metric(col, f"${vals.sum():,.2f}", delta=f"Prom: ${vals.mean():,.2f}")
                         st.caption(f"Max: ${vals.max():,.2f} | Min: ${vals.min():,.2f}")
-            else:
-                st.info("No hay columnas numericas")
         
-        # Panel Grafica
-        if st.session_state.get("mostrar_grafica", False):
+        if st.session_state.get("show_chart", False):
             st.divider()
             
-            tipo_graf = st.selectbox("Tipo de grafica:", ["Barras Debe vs Haber", "Linea de evolucion", "Pastel"], key="tipo_graf")
+            tipo_graf = st.selectbox("Tipo:", ["Barras", "Linea", "Pastel"], key="tipo_graf")
             
             if "Debe" in edited_df.columns and "Haber" in edited_df.columns:
-                fig, ax = plt.subplots(figsize=(10, 4.5))
+                fig, ax = plt.subplots(figsize=(10, 4))
                 fig.patch.set_facecolor('white')
                 
                 debe = convertir_numerico(edited_df, "Debe")
                 haber = convertir_numerico(edited_df, "Haber")
                 
-                if tipo_graf == "Barras Debe vs Haber":
+                if tipo_graf == "Barras":
                     x = range(len(edited_df))
                     ax.bar(x, debe, label="Debe", color="#ef4444", alpha=0.85)
                     ax.bar(x, haber, label="Haber", color="#22c55e", alpha=0.85, bottom=debe)
-                    ax.set_xlabel("Registro")
-                    ax.set_ylabel("Monto ($)")
-                    ax.set_title(f"{nombre} - Debe vs Haber")
                     ax.legend()
                     ax.grid(True, alpha=0.3, axis='y')
-                
-                elif tipo_graf == "Linea de evolucion":
+                elif tipo_graf == "Linea":
                     ax.plot(range(len(edited_df)), debe, 'o-', label="Debe", color="#ef4444", linewidth=2, markersize=5)
                     ax.plot(range(len(edited_df)), haber, 's-', label="Haber", color="#22c55e", linewidth=2, markersize=5)
-                    ax.set_xlabel("Registro")
-                    ax.set_ylabel("Monto ($)")
-                    ax.set_title(f"{nombre} - Evolucion")
                     ax.legend()
                     ax.grid(True, alpha=0.3)
-                
                 else:
                     total_debe = debe.sum()
                     total_haber = haber.sum()
                     if total_debe > 0 or total_haber > 0:
                         ax.pie([total_debe, total_haber], 
                                labels=[f"Debe\n${total_debe:,.2f}", f"Haber\n${total_haber:,.2f}"],
-                               colors=["#ef4444", "#22c55e"], 
-                               autopct='%1.1f%%',
-                               explode=(0.02, 0.02))
-                        ax.set_title(f"{nombre} - Distribucion")
+                               colors=["#ef4444", "#22c55e"], autopct='%1.1f%%')
                 
+                ax.set_xlabel("Registro")
+                ax.set_ylabel("Monto ($)")
+                ax.set_title(f"{nombre} - Debe vs Haber")
                 plt.tight_layout()
                 st.pyplot(fig)
                 
@@ -582,17 +563,14 @@ def pagina_app():
                     st.metric("Total Haber", f"${haber.sum():,.2f}")
                 with m3:
                     st.metric("Diferencia", f"${debe.sum() - haber.sum():,.2f}")
-            else:
-                st.warning("Se requieren columnas 'Debe' y 'Haber'")
         
-        # Reportes
         st.divider()
         st.markdown("#### Reportes")
         
         col_r1, col_r2 = st.columns(2)
         
         with col_r1:
-            with st.expander("Balance General", expanded=False):
+            with st.expander("Balance General"):
                 if st.button("Generar Balance", use_container_width=True, key="btn_balance"):
                     activos = pasivos = capital = 0
                     
@@ -623,7 +601,7 @@ def pagina_app():
                     st.info(f"Pasivo + Capital: ${pasivos + capital:,.2f} | Diferencia: ${activos - (pasivos + capital):,.2f}")
         
         with col_r2:
-            with st.expander("Estado de Resultados", expanded=False):
+            with st.expander("Estado de Resultados"):
                 if st.button("Generar Resultados", use_container_width=True, key="btn_resultados"):
                     ingresos = gastos = 0
                     
