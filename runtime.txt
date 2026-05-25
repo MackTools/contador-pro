@@ -1,2 +1,1 @@
-# runtime.txt - Especifica la versión de Python
-python-3.12.8
+python-3.10.12
