@@ -1,27 +1,21 @@
-# Contaduría - Requirements completos
-# Versión 3.0
+# ============================================
+# REQUISITOS PARA CONTADURÍA
+# ============================================
 
-# GUI y UI
-customtkinter==5.2.2
-tkcalendar==1.6.1
+# ---------- VERSIÓN WEB (Streamlit Cloud) ----------
+# Estos son los ÚNICOS necesarios para web_app.py
+streamlit==1.35.0
+pandas==2.2.2
+numpy==1.26.4
+openpyxl==3.1.5
+matplotlib==3.9.0
+plotly==5.24.0
+python-dateutil==2.9.0
 
-# Procesamiento de datos
-pandas==2.0.3
-numpy==1.24.3
-openpyxl==3.1.2
-
-# Reportes
-reportlab==4.0.4
-matplotlib==3.7.2
-
-# Web (Streamlit)
-streamlit==1.28.1
-plotly==5.17.0
-
-# Base de datos y nube
-pymongo==4.5.0
-requests==2.31.0
-
-# Utilidades
-python-dateutil==2.8.2
-pillow==10.0.0
+# ---------- VERSIÓN ESCRITORIO (Opcional) ----------
+# Estos NO son necesarios para Streamlit Cloud
+# Si despliegas solo la web, comenta estas líneas
+# customtkinter==5.2.2
+# tkcalendar==1.6.1
+# reportlab==4.2.0
+# pillow==10.3.0
