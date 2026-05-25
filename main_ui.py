@@ -1,5 +1,3 @@
-# main_ui.py - VERSIÓN MEJORADA
-# Diseño minimalista, colores sobrios, UX mejorada
 
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
@@ -12,7 +10,6 @@ from logica_contable import GestionArchivosMejorado, Plantillas, FormulaEngine
 from database_manager import DBManager
 from cloud_manager import CloudManager
 
-# Configuración de apariencia minimalista
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
@@ -179,7 +176,7 @@ class AppContable(ctk.CTk):
             else:
                 lbl_error.configure(text=data)
         
-        ctk.CTkButton(tab_login, text="Ingresar", command=do_login, fg_color="#2c7da0", height=38).pack(pady(15,0), fill="x")
+        ctk.CTkButton(tab_login, text="Ingresar", command=do_login, fg_color="#2c7da0", height=38).pack(pady=(15,0), fill="x")
         
         # Registro
         ctk.CTkLabel(tab_reg, text="Nombre", font=("Roboto", 11)).pack(anchor="w", pady=(15, 5))
@@ -226,7 +223,7 @@ class AppContable(ctk.CTk):
             else:
                 lbl_reg_error.configure(text=msg, text_color="#c0392b")
         
-        ctk.CTkButton(tab_reg, text="Crear cuenta", command=do_registro, fg_color="#5a6e7a", height=38).pack(pady(15,0), fill="x")
+        ctk.CTkButton(tab_reg, text="Crear cuenta", command=do_registro, fg_color="#5a6e7a", height=38).pack(pady=(15,0), fill="x")
         
         # Modo offline
         def offline():
@@ -538,8 +535,8 @@ class AppContable(ctk.CTk):
         
         ctk.CTkLabel(frame, text="Reportes contables", font=("Roboto", 16, "bold")).pack(pady=10)
         
-        ctk.CTkButton(frame, text="Balance General", command=lambda: [top.destroy(), self.generar_balance_mejorado()], fg_color="#2c7da0", height=40).pack(pady(10,5), fill="x")
-        ctk.CTkButton(frame, text="Estado de Resultados", command=lambda: [top.destroy(), self.generar_resultados_mejorado()], fg_color="#5a6e7a", height=40).pack(pady(5,10), fill="x")
+        ctk.CTkButton(frame, text="Balance General", command=lambda: [top.destroy(), self.generar_balance_mejorado()], fg_color="#2c7da0", height=40).pack(pady=(10,5), fill="x")
+        ctk.CTkButton(frame, text="Estado de Resultados", command=lambda: [top.destroy(), self.generar_resultados_mejorado()], fg_color="#5a6e7a", height=40).pack(pady=(5,10), fill="x")
         ctk.CTkButton(frame, text="Cancelar", command=top.destroy, fg_color="transparent", text_color="gray")
     
     def generar_balance_mejorado(self):
